@@ -40,33 +40,32 @@ def cmd_create(a_arg: str, b_arg: str) -> int:
 
     workspace.ensure_root_dirs()
 
-    with workspace.flock_exclusive(workspace.b_lock_path(b)):
-        session_id = workspace.allocate_session_id()
-        session_dir = workspace.session_path(session_id)
-        data_dir = session_dir / "data"
-        data_dir.mkdir(parents=True, exist_ok=True)
+    session_id = workspace.allocate_session_id()
+    session_dir = workspace.session_path(session_id)
+    data_dir = session_dir / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
 
-        mirror.build_workspace_data(data_dir, a, b)
+    mirror.build_workspace_data(data_dir, a, b)
 
-        docker.chown_container(data_dir / "c")
+    docker.chown_container(data_dir / "c")
 
-        subprocess.run(
-            ["bash", str(GIT_SNAPSHOT_SCRIPT), str(session_dir)],
-            check=True,
-        )
+    subprocess.run(
+        ["bash", str(GIT_SNAPSHOT_SCRIPT), str(session_dir)],
+        check=True,
+    )
 
-        meta = SessionMeta(
-            session_id=session_id,
-            status=SessionStatus.created,
-            created_at=_now(),
-            a=a,
-            b=b,
-            workspace=session_dir,
-            agent_image=config.REHEARSE_AGENT_IMAGE,
-            agent_uid=config.REHEARSE_AGENT_UID,
-            agent_gid=config.REHEARSE_AGENT_GID,
-        )
-        write_meta(session_dir, meta)
+    meta = SessionMeta(
+        session_id=session_id,
+        status=SessionStatus.created,
+        created_at=_now(),
+        a=a,
+        b=b,
+        workspace=session_dir,
+        agent_image=config.REHEARSE_AGENT_IMAGE,
+        agent_uid=config.REHEARSE_AGENT_UID,
+        agent_gid=config.REHEARSE_AGENT_GID,
+    )
+    write_meta(session_dir, meta)
 
     print(session_id)
     return 0
@@ -155,8 +154,11 @@ def cmd_purge(session_id: str) -> int:
 # ---- commit (stub) -----------------------------------------------------
 
 def cmd_commit(session_id: str) -> int:
-    print("Not implemented yet — will land in Step 4", file=sys.stderr)
-    return 1
+    session_dir = _resolve_session_dir(session_id)
+    meta = read_meta(session_dir)
+    with workspace.flock_exclusive(workspace.b_lock_path(meta.b)):
+        print("Not implemented yet — will land in Step 4", file=sys.stderr)
+        return 1
 
 
 # ---- resume (stub) -----------------------------------------------------

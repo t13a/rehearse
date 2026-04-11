@@ -46,23 +46,29 @@ def flock_exclusive(lock_path: Path) -> Iterator[None]:
 
 
 def b_lock_path(b: Path) -> Path:
+    """Path to the advisory lock file for a given B directory.
+
+    Used by `commit` to serialize concurrent commits against the same B.
+    The lock file itself is created on first use and intentionally left on
+    disk afterwards — flock is inode-scoped, so unlinking it races with
+    other processes' open() calls. One tiny file per unique B is fine.
+    """
     digest = hashlib.sha256(str(b).encode()).hexdigest()[:16]
     return locks_dir() / f"b-{digest}.lock"
-
-
-def _alloc_lock_path() -> Path:
-    return locks_dir() / "alloc.lock"
 
 
 def allocate_session_id() -> str:
     """Allocate a fresh session id (UNIX seconds, +1 on collision).
 
-    Holds an advisory lock so concurrent `create` invocations don't collide.
+    Relies on `mkdir(2)` being atomic: two racing callers cannot both create
+    the same directory, so the loser just increments and retries.
     """
     ensure_root_dirs()
-    with flock_exclusive(_alloc_lock_path()):
-        candidate = int(time.time())
-        while session_path(str(candidate)).exists():
+    candidate = int(time.time())
+    while True:
+        path = session_path(str(candidate))
+        try:
+            path.mkdir(parents=True)
+            return str(candidate)
+        except FileExistsError:
             candidate += 1
-        session_path(str(candidate)).mkdir(parents=True)
-        return str(candidate)
