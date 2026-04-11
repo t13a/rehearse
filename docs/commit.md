@@ -14,9 +14,10 @@
 
 ```python
 def commit(workspace: Path, A: Path, B: Path, log: LogFile):
-    d = workspace / "d"
-    a_prefix = str(workspace / "a") + "/"
-    b_prefix = str(workspace / "b") + "/"
+    data = workspace / "data"
+    d = data / "d"
+    a_prefix = str(data / "a") + "/"
+    b_prefix = str(data / "b") + "/"
 
     for entry in walk(d):
         if entry.is_symlink():
@@ -64,7 +65,7 @@ def handle_symlink(link: Path, d: Path, A: Path, B: Path,
         raise CommitAbort(f"unexpected symlink target: {target}")
 
 def resolve_target_to_real_A(target: str, a_prefix: str, A: Path) -> Path:
-    # target が "/opt/rehearse/sessions/<id>/a/foo.flac" のとき
+    # target が "/opt/rehearse/sessions/<id>/data/a/foo.flac" のとき
     # a_prefix を剥いで A/foo.flac にマップする
     suffix = target[len(a_prefix):]
     return A / suffix
@@ -72,7 +73,7 @@ def resolve_target_to_real_A(target: str, a_prefix: str, A: Path) -> Path:
 
 ## なぜ workspace 起点の absolute path で比較するか
 
-symlink の target は `workspace/a/...` または `workspace/b/...` の 2 系統しかないという不変条件を立てている (C/D 構築時にそう作る)。
+symlink の target は `workspace/data/a/...` または `workspace/data/b/...` の 2 系統しかないという不変条件を立てている (C/D 構築時にそう作る)。
 
 target 文字列の prefix で分岐するので:
 

@@ -44,8 +44,9 @@
 ### `rehearse new <A> <B> [--scope <subpath>]`
 
 - 新しい workspace を作成
-- `a/`, `b/` symlink、`c/`, `d/` を構築
+- `data/` 配下に `a/`, `b/` symlink、`c/`, `d/` を構築
 - `meta.json` を書き出し
+- `.gitignore` を書き、 `data/` の初期状態を git にスナップショット (レビュー用、詳細は [architecture.md](architecture.md) の「セッション開始時フック」節)
 - `--scope` 指定時は `d/` を B のサブディレクトリだけのミラーにする (スコープ制御)
 
 ### `rehearse run <session>`
@@ -124,6 +125,26 @@ Claude Code は会話ログを `~/.claude/projects/...` に出力する。ハー
 - レビュー時に「なぜその配置にしたか」を遡れる
 - `.FYI.md` とは別次元の情報 (transcript は全行動の記録、 `.FYI.md` は agent 自身が選んだダイジェスト)
 - 両方あると相互補完になる
+
+## レビュー手順
+
+`rehearse status` はセッションの現状と transcript の要約を示すが、 **配置計画そのもののレビューは git で行う**。 `rehearse new` の時点で `data/` の初期状態が git にスナップショットされているので、 agent が動かした分だけが差分として浮かび上がる。
+
+通常の動線:
+
+```bash
+cd /opt/rehearse/sessions/<id>
+git status                     # 変更された symlink / 追加された実ファイルの一覧
+git diff                       # target (= プロビナンス) の変化を読む
+cat data/d/**/FYI.md           # agent が残した補足を拾う (あれば)
+less data/transcript.jsonl     # 判断根拠を遡りたいとき
+```
+
+- symlink の blob は target 文字列そのままなので、 `mv` だけの移動は rename 検出が自動で効く
+- `.FYI.md` や `.done` も実ファイルとして自然に `git status` に出てくる
+- tig / lazygit / gitui / VS Code など、好みのレビュー UI をそのまま使える
+
+納得したら `rehearse commit`、そうでなければ `rehearse discard`。 git リポジトリは rehearse の動作に関与しないので、レビュアーが自由にブランチを切って試しても構わない。
 
 ## コミット後の workspace の姿
 
