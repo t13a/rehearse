@@ -1,0 +1,64 @@
+"""argparse entry point for the `rehearse` command."""
+
+from __future__ import annotations
+
+import argparse
+from typing import Sequence
+
+from rehearse import commands
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="rehearse",
+        description="symlink-staging harness for AI-driven large-file organization",
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_create = sub.add_parser("create", help="create a new session")
+    p_create.add_argument("a", help="source directory A")
+    p_create.add_argument("b", help="target library B")
+
+    p_status = sub.add_parser("status", help="list sessions or show one")
+    p_status.add_argument("session_id", nargs="?", default=None)
+
+    p_run = sub.add_parser("run", help="run the agent for a session")
+    p_run.add_argument("session_id")
+
+    p_discard = sub.add_parser("discard", help="mark a session as discarded")
+    p_discard.add_argument("session_id")
+
+    p_purge = sub.add_parser("purge", help="delete a session workspace")
+    p_purge.add_argument("session_id")
+
+    p_commit = sub.add_parser("commit", help="commit a session's plan (stub)")
+    p_commit.add_argument("session_id")
+
+    p_resume = sub.add_parser("resume", help="resume a session (stub)")
+    p_resume.add_argument("session_id")
+
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    match args.command:
+        case "create":
+            return commands.cmd_create(args.a, args.b)
+        case "status":
+            return commands.cmd_status(args.session_id)
+        case "run":
+            return commands.cmd_run(args.session_id)
+        case "discard":
+            return commands.cmd_discard(args.session_id)
+        case "purge":
+            return commands.cmd_purge(args.session_id)
+        case "commit":
+            return commands.cmd_commit(args.session_id)
+        case "resume":
+            return commands.cmd_resume(args.session_id)
+        case _:
+            parser.error(f"unknown command: {args.command}")
+            return 2

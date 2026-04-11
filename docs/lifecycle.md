@@ -3,8 +3,10 @@
 ## 状態遷移
 
 ```
-    [new]
-      ↓ (harness 起動, workspace + c/d 構築)
+    [create]
+      ↓ (workspace + c/d 構築)
+   [created]
+      ↓ (rehearse run)
    [running]
       ↓ (container 終了)
   ┌───┴────┐
@@ -26,6 +28,7 @@
 
 | 状態 | 説明 |
 |---|---|
+| `created` | `rehearse create` が workspace を構築した直後、まだ `run` していない |
 | `running` | コンテナが稼働中 |
 | `done` | `d/.done` が存在する状態で container 正常終了 |
 | `failed` | `d/.done` なしで container 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
@@ -39,7 +42,7 @@
 
 ハーネスが提供する CLI:
 
-### `rehearse new <A> <B>`
+### `rehearse create <A> <B>`
 
 - 新しい workspace を作成
 - `data/` 配下に `a/`, `b/` symlink、`c/`, `d/` を構築
@@ -140,7 +143,7 @@ Claude Code は会話ログを `~/.claude/projects/...` に出力する。ハー
 
 ## レビュー手順
 
-`rehearse status` はセッションの現状と transcript の要約を示すが、 **配置計画そのもののレビューは git で行う**。 `rehearse new` の時点で `data/` の初期状態が git にスナップショットされているので、 agent が動かした分だけが差分として浮かび上がる。
+`rehearse status` はセッションの現状と transcript の要約を示すが、 **配置計画そのもののレビューは git で行う**。 `rehearse create` の時点で `data/` の初期状態が git にスナップショットされているので、 agent が動かした分だけが差分として浮かび上がる。
 
 通常の動線:
 
