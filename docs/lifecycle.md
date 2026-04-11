@@ -7,14 +7,14 @@
       ↓ (harness 起動, workspace + c/d 構築)
    [running]
       ↓ (container 終了)
-  ┌───┴────┬──────────┬────────┐
-  ↓        ↓          ↓        ↓
-[done]  [abort]  [timeout]  [crash]
-  │        │          │        │
-  └────────┴──────────┴────────┘
-            ↓ (人間レビュー)
-     ┌──────┼───────┐
-     ↓      ↓       ↓
+  ┌───┴────┐
+  ↓        ↓
+[done]  [failed]
+  │        │
+  └────┬───┘
+       ↓ (人間レビュー)
+     ┌─┼──────┐
+     ↓ ↓      ↓
  [committed] [discarded] [resume → running]
      │          │
      └──────────┘
@@ -28,39 +28,38 @@
 |---|---|
 | `running` | コンテナが稼働中 |
 | `done` | `d/.done` が存在する状態で container 正常終了 |
-| `abort` | agent が自主的に終了 (`.done` なし) |
-| `timeout` | 外部 watcher が `docker kill` した |
-| `crash` | container が異常終了した (OOM 等) |
+| `failed` | `d/.done` なしで container 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
 | `committed` | `commit` が完了し、実ファイルが A→B に移動済み |
 | `discarded` | `discard` が実行された (実ファイルは無傷、workspace は audit として残る) |
 | `purged` | workspace が物理削除された |
 
-`done` と `abort` の区別は重要。`done` は「 agent が自分で完了と判断した」正常系。 `abort` `timeout` `crash` は何らかの異常で、レビュー時に扱いを変える可能性がある。
+`done` と `failed` の区別は重要。 `done` は「 agent が自分で完了と判断した」正常系。 `failed` は agent が完走しなかった異常系で、レビュー時に扱いを変えることがある。 harness の挙動 (commit/discard/resume) は両者で同じなので、状態としては 2 つに畳んでいる。
 
 ## コマンド
 
 ハーネスが提供する CLI:
 
-### `rehearse new <A> <B> [--scope <subpath>]`
+### `rehearse new <A> <B>`
 
 - 新しい workspace を作成
 - `data/` 配下に `a/`, `b/` symlink、`c/`, `d/` を構築
 - `meta.json` を書き出し
 - `.gitignore` を書き、 `data/` の初期状態を git にスナップショット (レビュー用、詳細は [architecture.md](architecture.md) の「セッション開始時フック」節)
-- `--scope` 指定時は `d/` を B のサブディレクトリだけのミラーにする (スコープ制御)
 
 ### `rehearse run <session>`
 
-- Docker コンテナを起動し、 agent を実行
-- container 終了まで block (または `--detach`)
-- 終了後、 `meta.json` の status を更新
+- `docker run --rm` で agent コンテナを起動し、終了まで block
+- 終了後、 `meta.json` の状態と exit reason を更新
 - transcript を workspace にコピー
 
-### `rehearse status <session>`
+`--rm` を付けるので container は毎回使い捨て。 transcript と stdout は bind mount 越しに workspace へ書かれるため、 container を残す理由はない。
 
-- session の現状と `d/` の tree を表示
-- `.FYI.md` を隣接表示
-- transcript の要約
+### `rehearse status [<session>]`
+
+- 引数なし: 全セッションの一覧 (id, 状態, 起動時刻, A / B の要約)
+- セッション指定: `meta.json` の内容 (状態、タイムスタンプ、 exit reason 等) を表示
+
+配置計画そのもののレビューは `git status` / `git diff` / `ls` / `less` 等を直接使う (「レビュー手順」節参照)。 `status` コマンドはセッション管理に徹し、 content には踏み込まない。
 
 ### `rehearse commit <session>`
 
@@ -75,11 +74,24 @@
 - `meta.json` の status を `discarded` に更新
 - workspace は残る (audit 記録として)
 
-### `rehearse resume <session>`
+### `rehearse resume <session> [-m <message>]`
 
 - 既存の workspace で agent を再起動
 - `c/` に残っている symlink = 未処理、 `d/` に動いた symlink = 既に配置決定
-- timeout や abort からの継続、または追加指示を与えた後の再実行に使う
+- `failed` からの継続、またはレビュー後の追加指示を与えての再実行に使う
+
+**追加指示の渡し方** (レビューで course correction を入れたいとき):
+
+- `-m "text"` で一発のメッセージを渡す — 短い指示向き
+  ```bash
+  rehearse resume 1744296235 -m "ジャズは year/artist ではなく label/catalog 順で並べて"
+  ```
+- 標準入力から読む — 長文や編集しながら書くとき
+  ```bash
+  rehearse resume 1744296235 < instructions.md
+  ```
+
+いずれも内部的には Claude Code の `-r` (既存セッションの resume) に新しい user message として注入される。既存の会話コンテキストは維持されるので、 agent はこれまでの判断を踏まえた上で追加指示に反応できる。
 
 ### `rehearse purge <session>`
 
