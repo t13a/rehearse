@@ -109,33 +109,97 @@ docker run --rm \
 
 ホスト側の commit スクリプトも同じパスを使って symlink を辿れる。
 
+### agent home: `workspace/home/agent` ↔ `/home/agent`
+
+Claude Code は `~/.claude/projects/...` に会話履歴を吐く。これがコンテナ揮発領域にあると `--rm` で消えてしまうので、 agent の HOME を **workspace 内に永続化**する:
+
+- `rehearse create` がセッションごとに `workspace/home/agent/` を掘り、 `c/` と一緒に agent UID へ chown ハンドオフする
+- runner script はこれを `/home/agent` に rw で bind mount し、 `HOME=/home/agent` を `-e` で渡す
+- FHS に沿った `/home/agent` を選んだのは、 Claude Code が前提とする「ホームディレクトリらしい場所」と整合させるため
+- ホスト側のパスが `workspace/home/agent` なのは workspace レイアウトの対称性を取るため
+
+`purge` で workspace を消すと agent home も一緒に消える。短期セッションでは履歴を後から振り返れるし、長期では `purge` 一発で掃除できる。
+
+## agent runner: harness と agent の境界
+
+`docker run` の組み立ては **bash スクリプト (`scripts/run-agent-cc.sh`) に外出し**してある。 Python (`docker.run_agent`) はもはや docker コマンドを知らず、 runner を `subprocess.run` で起動して exit code を受け取るだけの薄い wrapper になっている。
+
+理由は二つ:
+
+1. **テスタビリティ**: 本物の `rehearse-agent:latest` と `ANTHROPIC_API_KEY` を要求すると lifecycle テストが回せない。 `REHEARSE_AGENT_RUNNER` 環境変数で runner を `tests/fake-runner.sh` に差し替えると、 busybox だけで Step 2 相当のテストが動く
+2. **agent の交換可能性**: 将来 Claude Code を OpenCode やローカル LLM ベースの agent に差し替えるとき、 Python 側を一切いじらず、 runner script を新しい agent 用に書き直すだけで済む
+
+### Python ↔ Bash の契約
+
+harness は以下の環境変数を runner にエクスポートする:
+
+| 変数 | 意味 |
+|---|---|
+| `REHEARSE_SESSION_WORKSPACE` | session directory (host path) |
+| `REHEARSE_SESSION_DATA` | `data/` の host path |
+| `REHEARSE_SESSION_HOME` | `home/agent/` の host path (= container 内 `/home/agent` の bind 元) |
+| `REHEARSE_SESSION_A` | A の host path (RO mount に使う) |
+| `REHEARSE_SESSION_B` | B の host path (RO mount に使う) |
+| `REHEARSE_AGENT_IMAGE` | 使う image |
+| `REHEARSE_AGENT_UID` / `REHEARSE_AGENT_GID` | container user |
+| `REHEARSE_AGENT_TIMEOUT` | container 内で `timeout` が `claude` に与える秒数 |
+| `REHEARSE_MCP_CONFIG` | MCP 設定 JSON の host path (optional) |
+| `ANTHROPIC_API_KEY` | 親プロセスから継承 (Claude Code 専用 runner では必須) |
+
+runner は上記だけを使って `docker run` を組み立て、 container の exit code を自分の exit code としてそのまま返す。 harness はその数字だけを観察する。
+
+### timeout の扱い
+
+runner が組み立てる image の entrypoint は `timeout --kill-after=10 ${REHEARSE_AGENT_TIMEOUT} claude ...` で `claude` を包む。
+
+- 上限秒数経過で SIGTERM、 10 秒待っても落ちなければ SIGKILL
+- `timeout` の終了コードは SIGTERM 経路で 124、 SIGKILL 経路で 137
+- harness の `cmd_run` は exit code 124/137 をまとめて `exit_reason="timeout"` として記録する
+
 ## ツールボックス (コンテナ内)
 
-Docker image には **許可コマンドだけ**をインストールする。不要なコマンドは PATH 上から消えるので呼びようがない。
+Docker image (`docker/agent/Dockerfile`) は `node:20-slim` をベースにしている。 Claude Code CLI (`@anthropic-ai/claude-code`) が npm パッケージなので Node の入った image を選んだ。 base image に標準で入っている coreutils と、 apt で足した `findutils` / `tree` で agent の道具箱になる。
 
-**許可**:
+**許可** (image に存在する):
 
 - ディレクトリ操作: `mkdir`, `rmdir`
-- 移動: `mv` (wrapper で `-n` 強制、上書き禁止)
+- 移動: `mv`
 - ファイル作成: `touch` (`.done` と `.FYI.md` の作成用)
 - 探索: `ls`, `find`, `tree`
 - メタデータ: `stat`, `readlink`, `realpath`
 - パス操作: `basename`, `dirname`, `wc`
 - テキスト I/O: `cat`, `grep`, `sed` (`.FYI.md` の読み書き・検索)
+- 時間制御: `timeout` (entrypoint が `claude` を包むのに使う)
 - シェル組込み: `cd`, `pwd`, `echo`, `test` / `[ ]`
 
-**不許可** (image に入れない):
+**不許可** (Dockerfile の最終層で `rm` する):
 
 - `rm` — 削除不可 (削除は `rmdir` のみで、空ディレクトリ限定)
 - `cp` — symlink 複製を防ぐ
 - `ln` — 任意 symlink 生成を防ぐ
 - `chmod`, `chown`, `dd`, `truncate` — 不要かつ危険
 
-**ラッパー規約**:
-
-- `mv` → 実際には `mv -n` (既存上書きを黙って行うのを防ぐ)
+最後の `rm` で `rm` 自身を消すのは意図的で、削除を **単一の `RUN` 命令**にまとめることで「 `rm` が消えた後にもう一度 `rm` を呼ぶ」という順序の罠を避けている。
 
 `ls` / `find` / `stat` は既定の挙動 (symlink 自身を見る) のままで構わない。 agent にとっては target の文字列そのものがプロビナンス情報になるので、 symlink を follow させるよりそのまま見せる方が有益。
+
+### `/opt/rehearse/scripts/` (image 内のローカルツール置き場)
+
+Dockerfile は `/opt/rehearse/scripts/` を `PATH` の先頭に入れている。ここにシェルスクリプトを置けば、 agent の `Bash` ツールから名前で呼べる:
+
+- 想定する用途は「 image にあらかじめ詰めておきたい小さなヘルパー」 (例: `tree` の出力を整形するラッパー、 audio ファイルのメタデータを抽出する一発スクリプト等)
+- ホスト側のソースは `docker/agent/scripts/` に置き、 image build 時に `COPY` で持ち込む
+- 「ローカル MCP サーバー」相当のことをしたい場合は、ここに stdio MCP の実装を置いて [MCP 設定](#mcp-mcp_config) の `command` で指せばよい。 Step 3 の段階ではディレクトリだけ用意してあり、中身は空 (`.gitkeep` のみ)
+
+### MCP (`REHEARSE_MCP_CONFIG`)
+
+agent の道具を image を再ビルドせずに増やせるよう、 MCP サーバー定義は **image の外部** から注入する:
+
+- 環境変数 `REHEARSE_MCP_CONFIG` に Claude Code ネイティブ形式の JSON ファイルパスを入れる
+- runner script がそれを `/opt/rehearse/mcp.json` に RO で bind mount し、 entrypoint が `claude --mcp-config` に渡す
+- 未設定なら `--mcp-config` を付けない (Claude Code の組込みツールだけで動く)
+
+これにより「リモート MCP サーバーを差し替えるたびに image を作り直す」という事態を避けられる。
 
 ## Isolation まわり
 

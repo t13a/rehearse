@@ -1,0 +1,136 @@
+"""Verify the env-var contract between docker.run_agent and the runner script."""
+
+from __future__ import annotations
+
+import os
+import stat
+from pathlib import Path
+
+import pytest
+
+from rehearse import config, docker
+
+
+def _make_dump_runner(tmp_path: Path, dump_path: Path) -> Path:
+    """A tiny bash script that writes its env to dump_path and exits 0."""
+    runner = tmp_path / "dump-runner.sh"
+    runner.write_text(
+        "#!/bin/bash\n"
+        f"env > {dump_path}\n"
+        "exit 0\n"
+    )
+    runner.chmod(runner.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return runner
+
+
+def _parse_env(dump_path: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for line in dump_path.read_text().splitlines():
+        if "=" in line:
+            k, v = line.split("=", 1)
+            out[k] = v
+    return out
+
+
+REQUIRED_KEYS = {
+    "REHEARSE_SESSION_WORKSPACE",
+    "REHEARSE_SESSION_DATA",
+    "REHEARSE_SESSION_HOME",
+    "REHEARSE_SESSION_A",
+    "REHEARSE_SESSION_B",
+    "REHEARSE_AGENT_IMAGE",
+    "REHEARSE_AGENT_UID",
+    "REHEARSE_AGENT_GID",
+    "REHEARSE_AGENT_TIMEOUT",
+}
+
+
+def test_run_agent_passes_required_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = tmp_path / "env.dump"
+    runner = _make_dump_runner(tmp_path, dump)
+
+    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
+    monkeypatch.delenv("REHEARSE_MCP_CONFIG", raising=False)
+    config.reload()
+
+    workspace = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    workspace.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = docker.run_agent(workspace, a, b)
+    assert rc == 0
+
+    env = _parse_env(dump)
+
+    missing = REQUIRED_KEYS - env.keys()
+    assert not missing, f"runner did not receive: {missing}"
+
+    assert env["REHEARSE_SESSION_WORKSPACE"] == str(workspace)
+    assert env["REHEARSE_SESSION_DATA"] == str(workspace / "data")
+    assert env["REHEARSE_SESSION_HOME"] == str(workspace / "home" / "agent")
+    assert env["REHEARSE_SESSION_A"] == str(a)
+    assert env["REHEARSE_SESSION_B"] == str(b)
+    assert env["REHEARSE_AGENT_IMAGE"] == config.REHEARSE_AGENT_IMAGE
+    assert env["REHEARSE_AGENT_UID"] == str(config.REHEARSE_AGENT_UID)
+    assert env["REHEARSE_AGENT_GID"] == str(config.REHEARSE_AGENT_GID)
+    assert env["REHEARSE_AGENT_TIMEOUT"] == str(config.REHEARSE_AGENT_TIMEOUT)
+    assert "REHEARSE_MCP_CONFIG" not in env
+
+    config.reload()
+
+
+def test_run_agent_passes_mcp_config_when_set(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = tmp_path / "env.dump"
+    runner = _make_dump_runner(tmp_path, dump)
+    mcp = tmp_path / "mcp.json"
+    mcp.write_text("{}\n")
+
+    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
+    monkeypatch.setenv("REHEARSE_MCP_CONFIG", str(mcp))
+    config.reload()
+
+    workspace = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    workspace.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = docker.run_agent(workspace, a, b)
+    assert rc == 0
+
+    env = _parse_env(dump)
+    assert env.get("REHEARSE_MCP_CONFIG") == str(mcp.resolve())
+
+    config.reload()
+
+
+def test_run_agent_propagates_exit_code(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = tmp_path / "fail-runner.sh"
+    runner.write_text("#!/bin/bash\nexit 7\n")
+    runner.chmod(runner.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
+    monkeypatch.delenv("REHEARSE_MCP_CONFIG", raising=False)
+    config.reload()
+
+    workspace = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    workspace.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = docker.run_agent(workspace, a, b)
+    assert rc == 7
+
+    config.reload()

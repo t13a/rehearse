@@ -51,11 +51,15 @@
 
 ### `rehearse run <session>`
 
-- `docker run --rm` で agent コンテナを起動し、終了まで block
-- 終了後、 `meta.json` の状態と exit reason を更新
-- transcript を workspace にコピー
+- 外部 runner script (`scripts/run-agent-cc.sh`、 `REHEARSE_AGENT_RUNNER` で差し替え可) を起動し、終了まで block
+- runner は内部で `docker run --rm` を組み立てて agent コンテナ (既定 `rehearse-agent:latest`) を回す
+- agent (Claude Code) は entrypoint 内で `timeout ${REHEARSE_AGENT_TIMEOUT} claude --print --permission-mode bypassPermissions ...` として起動される
+- 終了後、 `meta.json` の状態と `exit_reason` を更新
+  - exit 0 + `d/.done` あり → `done` (`exit_reason="normal"`)
+  - exit 124 / 137 → `failed` (`exit_reason="timeout"`)
+  - その他 → `failed` (`exit_reason="exit=N"`)
 
-`--rm` を付けるので container は毎回使い捨て。 transcript と stdout は bind mount 越しに workspace へ書かれるため、 container を残す理由はない。
+`--rm` を付けるので container は毎回使い捨て。会話履歴は workspace の `home/agent/.claude/...` (= container の `/home/agent`) に永続化される。 harness ↔ runner 間の env 契約と timeout の扱いは [architecture.md](architecture.md) の「agent runner」節を参照。
 
 ### `rehearse status [<session>]`
 

@@ -33,11 +33,20 @@ def docker_available() -> bool:
     return True
 
 
+FAKE_RUNNER = Path(__file__).resolve().parent / "fake-runner.sh"
+
+
 @pytest.fixture
 def rehearse_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point REHEARSE_ROOT at a temp directory and refresh config."""
+    """Point REHEARSE_ROOT at a temp directory and refresh config.
+
+    Also swaps REHEARSE_AGENT_RUNNER to a busybox-backed fake runner so that
+    lifecycle tests don't need the real rehearse-agent image or an API key.
+    """
     root = tmp_path / "rehearse"
     monkeypatch.setenv("REHEARSE_ROOT", str(root))
+    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(FAKE_RUNNER))
+    monkeypatch.setenv("REHEARSE_AGENT_IMAGE", "busybox:latest")
     config.reload()
     yield root
 

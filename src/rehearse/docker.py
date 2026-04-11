@@ -1,15 +1,17 @@
 """Docker wrappers for the three harness roles.
 
-- `chown_container` hands ownership of `data/c/` to the agent UID at create time.
-- `run_agent` launches the agent (or busybox placeholder) against a workspace.
+- `chown_container` hands ownership of host paths to the agent UID at create time.
+- `run_agent` invokes an external runner script that knows how to launch the agent.
 - `cleanup_container` removes the workspace as root, since agent-owned files
   cannot be unlinked by the harness UID.
 """
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
+from typing import Iterable
 
 from rehearse import config
 
@@ -28,42 +30,58 @@ def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return result
 
 
-def chown_container(c_path: Path) -> None:
-    """Recursively chown `c_path` to the agent UID/GID using a root container.
+def chown_container(paths: Path | Iterable[Path]) -> None:
+    """Recursively chown one or more host paths to the agent UID/GID.
 
     `-h` so that symlinks themselves get re-owned (not their targets, which are
-    read-only anyway).
+    read-only anyway). Each path is bind-mounted at its own host path so that
+    chown can address it without remapping.
     """
-    cmd = [
-        "docker", "run", "--rm",
-        "--user", "0:0",
-        "-v", f"{c_path}:{c_path}:rw",
+    if isinstance(paths, Path):
+        path_list = [paths]
+    else:
+        path_list = list(paths)
+    if not path_list:
+        return
+
+    cmd: list[str] = ["docker", "run", "--rm", "--user", "0:0"]
+    for p in path_list:
+        cmd += ["-v", f"{p}:{p}:rw"]
+    cmd += [
         config.REHEARSE_HELPER_IMAGE,
         "chown", "-Rh",
         f"{config.REHEARSE_AGENT_UID}:{config.REHEARSE_AGENT_GID}",
-        str(c_path),
     ]
+    cmd += [str(p) for p in path_list]
     _run(cmd)
 
 
 def run_agent(workspace: Path, a: Path, b: Path) -> int:
-    """Run the agent container against the given workspace.
+    """Invoke the external agent runner script.
 
-    Step 2 placeholder: busybox that lists c/ and d/ then touches d/.done.
-    Returns the container exit code (does NOT raise on non-zero).
+    The runner is a bash script (`scripts/run-agent-cc.sh` by default) that
+    knows how to launch the underlying agent (Claude Code, OpenCode, ...).
+    The harness only passes parameters via environment variables and observes
+    the runner's exit code. Tests swap `REHEARSE_AGENT_RUNNER` to point at a
+    fake runner so they don't need a real agent image or API key.
+
+    Returns the runner's exit code (does NOT raise on non-zero).
     """
-    data = workspace / "data"
-    cmd = [
-        "docker", "run", "--rm",
-        "--user", f"{config.REHEARSE_AGENT_UID}:{config.REHEARSE_AGENT_GID}",
-        "-v", f"{data}:{data}:rw",
-        "-v", f"{a}:{a}:ro",
-        "-v", f"{b}:{b}:ro",
-        "-w", str(data),
-        config.REHEARSE_AGENT_IMAGE,
-        "sh", "-c", "ls c/ && ls d/ && touch d/.done",
-    ]
-    return subprocess.run(cmd).returncode
+    env = os.environ.copy()
+    env["REHEARSE_SESSION_WORKSPACE"] = str(workspace)
+    env["REHEARSE_SESSION_DATA"] = str(workspace / "data")
+    env["REHEARSE_SESSION_HOME"] = str(workspace / "home" / "agent")
+    env["REHEARSE_SESSION_A"] = str(a)
+    env["REHEARSE_SESSION_B"] = str(b)
+    env["REHEARSE_AGENT_IMAGE"] = config.REHEARSE_AGENT_IMAGE
+    env["REHEARSE_AGENT_UID"] = str(config.REHEARSE_AGENT_UID)
+    env["REHEARSE_AGENT_GID"] = str(config.REHEARSE_AGENT_GID)
+    env["REHEARSE_AGENT_TIMEOUT"] = str(config.REHEARSE_AGENT_TIMEOUT)
+    if config.REHEARSE_MCP_CONFIG is not None:
+        env["REHEARSE_MCP_CONFIG"] = str(config.REHEARSE_MCP_CONFIG)
+
+    runner = str(config.REHEARSE_AGENT_RUNNER)
+    return subprocess.run([runner], env=env).returncode
 
 
 def cleanup_container(workspace: Path) -> None:

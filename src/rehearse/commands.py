@@ -47,7 +47,10 @@ def cmd_create(a_arg: str, b_arg: str) -> int:
 
     mirror.build_workspace_data(data_dir, a, b)
 
-    docker.chown_container(data_dir / "c")
+    agent_home = session_dir / "home" / "agent"
+    agent_home.mkdir(parents=True)
+
+    docker.chown_container([data_dir / "c", agent_home])
 
     subprocess.run(
         ["bash", str(GIT_SNAPSHOT_SCRIPT), str(session_dir)],
@@ -116,12 +119,15 @@ def cmd_run(session_id: str) -> int:
 
     meta.ended_at = _now()
     done_flag = session_dir / "data" / "d" / ".done"
-    if rc == 0 and done_flag.exists():
+    if done_flag.exists():
         meta.status = SessionStatus.done
         meta.exit_reason = "normal"
+    elif rc in (124, 137):
+        meta.status = SessionStatus.failed
+        meta.exit_reason = "timeout"
     else:
         meta.status = SessionStatus.failed
-        meta.exit_reason = f"exit={rc}" if not done_flag.exists() else "no-done-flag"
+        meta.exit_reason = f"exit={rc}"
     write_meta(session_dir, meta)
     return 0 if meta.status == SessionStatus.done else 1
 
