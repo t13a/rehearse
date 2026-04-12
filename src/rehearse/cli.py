@@ -36,6 +36,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_commit = sub.add_parser("commit", help="commit a session's plan")
     p_commit.add_argument("session_id")
 
+    p_exec = sub.add_parser("exec", help="run a command in the session data directory")
+    p_exec.add_argument("session_id")
+    p_exec.add_argument("argv", nargs=argparse.REMAINDER)
+
     return parser
 
 
@@ -56,6 +60,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return commands.cmd_purge(args.session_id)
         case "commit":
             return commands.cmd_commit(args.session_id)
+        case "exec":
+            return commands.cmd_exec(args.session_id, args.argv)
         case _:
             parser.error(f"unknown command: {args.command}")
             return 2

@@ -188,3 +188,14 @@ def cmd_commit(session_id: str) -> int:
     return 0
 
 
+# ---- exec --------------------------------------------------------------
+
+def cmd_exec(session_id: str, argv: list[str]) -> int:
+    if not argv:
+        print("usage: rehearse exec <session> CMD [ARGS...]", file=sys.stderr)
+        return 2
+    session_dir = _resolve_session_dir(session_id)
+    data_dir = session_dir / "data"
+    return subprocess.run(argv, cwd=data_dir).returncode
+
+

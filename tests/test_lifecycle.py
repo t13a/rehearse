@@ -135,3 +135,19 @@ def test_run_with_message(
     session_id = capsys.readouterr().out.strip()
 
     assert commands.cmd_run(session_id, message="テスト指示") == 0
+
+
+def test_exec_runs_in_data_dir(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    assert commands.cmd_create(str(a), str(b)) == 0
+    session_id = capsys.readouterr().out.strip()
+    session_dir = config.SESSIONS_DIR / session_id
+
+    out = session_dir / "data" / "cwd.txt"
+    assert commands.cmd_exec(session_id, ["sh", "-c", f"pwd > {out}"]) == 0
+    assert out.read_text().strip() == str(session_dir / "data")
