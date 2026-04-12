@@ -46,6 +46,10 @@ if [ -n "${REHEARSE_AGENT_MESSAGE:-}" ]; then
   args+=(-e "REHEARSE_AGENT_MESSAGE=${REHEARSE_AGENT_MESSAGE}")
 fi
 
+if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then
+  args+=(-e "REHEARSE_AGENT_EXTRA_ARGS=${REHEARSE_AGENT_EXTRA_ARGS}")
+fi
+
 args+=("${REHEARSE_AGENT_IMAGE}")
 
 exec "${args[@]}"

@@ -23,6 +23,12 @@ if ls "$HOME/.claude/projects/"*/*.jsonl >/dev/null 2>&1; then
   args+=(--continue)
 fi
 
+if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then
+  # Word-split intentionally: caller passes space-separated flags.
+  # shellcheck disable=SC2206
+  args+=(${REHEARSE_AGENT_EXTRA_ARGS})
+fi
+
 prompt="${REHEARSE_AGENT_MESSAGE:-作業を開始してください。仕様はシステムプロンプト (/opt/rehearse/prompts/agent.md) にあります。}"
 
 TIMEOUT="${REHEARSE_AGENT_TIMEOUT:-3600}"

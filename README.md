@@ -97,6 +97,7 @@ stat -c '%a %U:%G %n' ~/.local/share/rehearse/sessions/$SID/data/archive
 | `REHEARSE_AGENT_RUNNER` | `<repo>/scripts/run-agent-cc.sh` | agent を起動する bash スクリプト。差し替えれば別の agent (OpenCode 等) やテスト用の fake runner に切り替えられる |
 | `REHEARSE_AGENT_TIMEOUT` | `3600` | container 内で `timeout` が `claude` に与える秒数 |
 | `REHEARSE_MCP_CONFIG` | (未設定) | Claude Code ネイティブ形式の MCP 設定 JSON のパス。指定すると container に RO mount され `claude --mcp-config` に渡される |
+| `REHEARSE_AGENT_EXTRA_ARGS` | (未設定) | `claude` コマンドに渡す追加引数 (スペース区切り)。例: `--output-format stream-json --verbose --include-partial-messages` |
 | `ANTHROPIC_API_KEY` | (未設定) | 既定 runner が必須として要求。 host の環境変数から container に pass-through される |
 
 ### MCP 設定の例
