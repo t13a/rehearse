@@ -61,17 +61,12 @@ def test_full_lifecycle(
     detail = capsys.readouterr().out
     assert '"status": "done"' in detail
 
-    # commit is a stub
-    assert commands.cmd_commit(session_id) == 1
-    err = capsys.readouterr().err
-    assert "Not implemented" in err
-
-    # discard
-    assert commands.cmd_discard(session_id) == 0
+    # commit — fake runner doesn't move c/ into d/, so this is a no-op
+    # (only B-mirror symlinks in d/, all skipped). A and B stay untouched.
+    assert commands.cmd_commit(session_id) == 0
     meta = read_meta(session_dir)
-    assert meta.status == SessionStatus.discarded
+    assert meta.status == SessionStatus.committed
 
-    # A and B are untouched throughout the lifecycle
     assert _hash_tree(a) == a_hash_before
     assert _hash_tree(b) == b_hash_before
 

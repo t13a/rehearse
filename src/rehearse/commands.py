@@ -7,7 +7,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from rehearse import config, docker, mirror, validate, workspace
+from rehearse import commit, config, docker, mirror, validate, workspace
 from rehearse.meta import SessionMeta, SessionStatus, read_meta, write_meta
 
 
@@ -157,14 +157,34 @@ def cmd_purge(session_id: str) -> int:
     return 0
 
 
-# ---- commit (stub) -----------------------------------------------------
+# ---- commit ------------------------------------------------------------
 
 def cmd_commit(session_id: str) -> int:
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
+
+    allowed = (SessionStatus.done, SessionStatus.failed, SessionStatus.committed)
+    if meta.status not in allowed:
+        print(
+            f"cannot commit session in status={meta.status.value}",
+            file=sys.stderr,
+        )
+        return 2
+
     with workspace.flock_exclusive(workspace.b_lock_path(meta.b)):
-        print("Not implemented yet — will land in Step 4", file=sys.stderr)
-        return 1
+        try:
+            stats = commit.commit_session(session_dir, meta.a, meta.b)
+        except commit.CommitAbort as e:
+            print(f"commit aborted: {e}", file=sys.stderr)
+            return 1
+
+    meta.status = SessionStatus.committed
+    write_meta(session_dir, meta)
+    print(
+        f"committed: moved={stats.moved} already_moved={stats.already_moved} "
+        f"skipped_b={stats.skipped_b} skipped_file={stats.skipped_file}"
+    )
+    return 0
 
 
 # ---- resume (stub) -----------------------------------------------------
