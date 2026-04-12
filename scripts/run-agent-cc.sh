@@ -42,6 +42,10 @@ if [ -n "${REHEARSE_MCP_CONFIG:-}" ] && [ -f "${REHEARSE_MCP_CONFIG}" ]; then
   )
 fi
 
+if [ -n "${REHEARSE_AGENT_MESSAGE:-}" ]; then
+  args+=(-e "REHEARSE_AGENT_MESSAGE=${REHEARSE_AGENT_MESSAGE}")
+fi
+
 args+=("${REHEARSE_AGENT_IMAGE}")
 
 exec "${args[@]}"

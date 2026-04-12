@@ -68,7 +68,7 @@ uv run rehearse run "$SID"            # Claude Code 起動。終わると d/.don
 uv run rehearse status "$SID"
 ls ~/.local/share/rehearse/sessions/"$SID"/data/d/
 (cd ~/.local/share/rehearse/sessions/"$SID" && git status)
-uv run rehearse commit "$SID"         # スタブ。非零終了
+uv run rehearse commit "$SID"         # d/ の配置に従って A→B にファイル移動
 uv run rehearse discard "$SID"
 uv run rehearse purge "$SID"
 ```
@@ -151,5 +151,5 @@ docker run --rm --user 0:0 \
 
 - ✅ Step 1: agent プロンプト ([prompts/agent.md](prompts/agent.md))
 - ✅ Step 2: 最小ハーネスのコード
-- ✅ Step 3: Dockerfile + Claude Code 起動 + MCP 取り込み (このコミット)
-- ⏳ Step 4: commit アルゴリズム
+- ✅ Step 3: Dockerfile + Claude Code 起動 + MCP 取り込み
+- ✅ Step 4: commit アルゴリズム

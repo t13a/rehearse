@@ -17,7 +17,7 @@
        ↓ (人間レビュー)
      ┌─┼──────┐
      ↓ ↓      ↓
- [committed] [discarded] [resume → running]
+ [committed] [discarded] [run -m → running]
      │          │
      └──────────┘
           ↓ (任意のタイミングで物理削除)
@@ -36,7 +36,7 @@
 | `discarded` | `discard` が実行された (実ファイルは無傷、workspace は audit として残る) |
 | `purged` | workspace が物理削除された |
 
-`done` と `failed` の区別は重要。 `done` は「 agent が自分で完了と判断した」正常系。 `failed` は agent が完走しなかった異常系で、レビュー時に扱いを変えることがある。 harness の挙動 (commit/discard/resume) は両者で同じなので、状態としては 2 つに畳んでいる。
+`done` と `failed` の区別は重要。 `done` は「 agent が自分で完了と判断した」正常系。 `failed` は agent が完走しなかった異常系で、レビュー時に扱いを変えることがある。 harness の挙動 (commit/discard/run) は両者で同じなので、状態としては 2 つに畳んでいる。
 
 ## コマンド
 
@@ -49,7 +49,7 @@
 - `meta.json` を書き出し
 - `.gitignore` を書き、 `data/` の初期状態を git にスナップショット (レビュー用、詳細は [architecture.md](architecture.md) の「セッション開始時フック」節)
 
-### `rehearse run <session>`
+### `rehearse run <session> [-m <message>]`
 
 - 外部 runner script (`scripts/run-agent-cc.sh`、 `REHEARSE_AGENT_RUNNER` で差し替え可) を起動し、終了まで block
 - runner は内部で `docker run --rm` を組み立てて agent コンテナ (既定 `rehearse-agent:latest`) を回す
@@ -60,6 +60,18 @@
   - その他 → `failed` (`exit_reason="exit=N"`)
 
 `--rm` を付けるので container は毎回使い捨て。会話履歴は workspace の `home/agent/.claude/...` (= container の `/home/agent`) に永続化される。 harness ↔ runner 間の env 契約と timeout の扱いは [architecture.md](architecture.md) の「agent runner」節を参照。
+
+**再実行** (`done` / `failed` からの再 run):
+
+`done` または `failed` の session に対して `run` を呼ぶと、 entrypoint が会話履歴の存在を検出して Claude Code を `--continue` モードで起動する。 harness 側に「再開」という概念はなく、初回か再開かの判定は entrypoint に閉じている。
+
+**追加指示の渡し方** (`-m`):
+
+- `-m "text"` で agent にメッセージを渡す — 初回でも再実行でも使える
+  ```bash
+  rehearse run 1744296235 -m "ジャズは year/artist ではなく label/catalog 順で並べて"
+  ```
+- 省略時はデフォルトメッセージが使われる
 
 ### `rehearse status [<session>]`
 
@@ -80,25 +92,6 @@
 - 何もしない (実ファイルは無傷)
 - `meta.json` の status を `discarded` に更新
 - workspace は残る (audit 記録として)
-
-### `rehearse resume <session> [-m <message>]`
-
-- 既存の workspace で agent を再起動
-- `c/` に残っている symlink = 未処理、 `d/` に動いた symlink = 既に配置決定
-- `failed` からの継続、またはレビュー後の追加指示を与えての再実行に使う
-
-**追加指示の渡し方** (レビューで course correction を入れたいとき):
-
-- `-m "text"` で一発のメッセージを渡す — 短い指示向き
-  ```bash
-  rehearse resume 1744296235 -m "ジャズは year/artist ではなく label/catalog 順で並べて"
-  ```
-- 標準入力から読む — 長文や編集しながら書くとき
-  ```bash
-  rehearse resume 1744296235 < instructions.md
-  ```
-
-いずれも内部的には Claude Code の `-r` (既存セッションの resume) に新しい user message として注入される。既存の会話コンテキストは維持されるので、 agent はこれまでの判断を踏まえた上で追加指示に反応できる。
 
 ### `rehearse purge <session>`
 

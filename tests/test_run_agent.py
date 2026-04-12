@@ -112,6 +112,58 @@ def test_run_agent_passes_mcp_config_when_set(
     config.reload()
 
 
+def test_run_agent_passes_message_when_set(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = tmp_path / "env.dump"
+    runner = _make_dump_runner(tmp_path, dump)
+
+    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
+    monkeypatch.delenv("REHEARSE_MCP_CONFIG", raising=False)
+    config.reload()
+
+    workspace = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    workspace.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = docker.run_agent(workspace, a, b, message="追加指示テスト")
+    assert rc == 0
+
+    env = _parse_env(dump)
+    assert env.get("REHEARSE_AGENT_MESSAGE") == "追加指示テスト"
+
+    config.reload()
+
+
+def test_run_agent_omits_message_when_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dump = tmp_path / "env.dump"
+    runner = _make_dump_runner(tmp_path, dump)
+
+    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
+    monkeypatch.delenv("REHEARSE_MCP_CONFIG", raising=False)
+    config.reload()
+
+    workspace = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    workspace.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = docker.run_agent(workspace, a, b)
+    assert rc == 0
+
+    env = _parse_env(dump)
+    assert "REHEARSE_AGENT_MESSAGE" not in env
+
+    config.reload()
+
+
 def test_run_agent_propagates_exit_code(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

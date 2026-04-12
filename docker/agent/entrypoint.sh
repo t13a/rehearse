@@ -19,10 +19,16 @@ if [ -n "${REHEARSE_MCP_CONFIG_PATH:-}" ] && [ -f "${REHEARSE_MCP_CONFIG_PATH}" 
   args+=(--mcp-config "${REHEARSE_MCP_CONFIG_PATH}")
 fi
 
+if ls "$HOME/.claude/projects/"*/*.jsonl >/dev/null 2>&1; then
+  args+=(--continue)
+fi
+
+prompt="${REHEARSE_AGENT_MESSAGE:-作業を開始してください。仕様はシステムプロンプト (/opt/rehearse/prompts/agent.md) にあります。}"
+
 TIMEOUT="${REHEARSE_AGENT_TIMEOUT:-3600}"
 
 # `timeout` returns 124 on SIGTERM and 137 on SIGKILL; the harness keys off
 # both to recognize a timeout.
 exec timeout --kill-after=10 "${TIMEOUT}" \
   claude "${args[@]}" \
-  "作業を開始してください。仕様はシステムプロンプト (/opt/rehearse/prompts/agent.md) にあります。"
+  "$prompt"

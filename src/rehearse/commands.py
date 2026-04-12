@@ -100,11 +100,12 @@ def cmd_status(session_id: str | None) -> int:
 
 # ---- run ---------------------------------------------------------------
 
-def cmd_run(session_id: str) -> int:
+def cmd_run(session_id: str, *, message: str | None = None) -> int:
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
 
-    if meta.status not in (SessionStatus.created, SessionStatus.failed):
+    allowed = (SessionStatus.created, SessionStatus.done, SessionStatus.failed)
+    if meta.status not in allowed:
         print(
             f"cannot run session in status={meta.status.value}",
             file=sys.stderr,
@@ -115,7 +116,7 @@ def cmd_run(session_id: str) -> int:
     meta.started_at = _now()
     write_meta(session_dir, meta)
 
-    rc = docker.run_agent(session_dir, meta.a, meta.b)
+    rc = docker.run_agent(session_dir, meta.a, meta.b, message=message)
 
     meta.ended_at = _now()
     done_flag = session_dir / "data" / "d" / ".done"
@@ -187,8 +188,3 @@ def cmd_commit(session_id: str) -> int:
     return 0
 
 
-# ---- resume (stub) -----------------------------------------------------
-
-def cmd_resume(session_id: str) -> int:
-    print("Not implemented yet — will land in a later step", file=sys.stderr)
-    return 1

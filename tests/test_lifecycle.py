@@ -100,15 +100,38 @@ def test_cannot_purge_running_session(
     write_meta(session_dir, meta)
 
 
-def test_resume_is_stub(
+def test_run_from_done_session(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
+    """A done session can be re-run (the agent resumes automatically)."""
     a, b = fake_ab
     assert commands.cmd_create(str(a), str(b)) == 0
     session_id = capsys.readouterr().out.strip()
-    assert commands.cmd_resume(session_id) == 1
-    err = capsys.readouterr().err
-    assert "Not implemented" in err
+    session_dir = config.SESSIONS_DIR / session_id
+
+    # First run
+    assert commands.cmd_run(session_id) == 0
+    meta = read_meta(session_dir)
+    assert meta.status == SessionStatus.done
+
+    # Second run from done
+    assert commands.cmd_run(session_id) == 0
+    meta = read_meta(session_dir)
+    assert meta.status == SessionStatus.done
+
+
+def test_run_with_message(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The -m flag is accepted on any run."""
+    a, b = fake_ab
+    assert commands.cmd_create(str(a), str(b)) == 0
+    session_id = capsys.readouterr().out.strip()
+
+    assert commands.cmd_run(session_id, message="テスト指示") == 0

@@ -56,7 +56,8 @@ def chown_container(paths: Path | Iterable[Path]) -> None:
     _run(cmd)
 
 
-def run_agent(workspace: Path, a: Path, b: Path) -> int:
+def run_agent(workspace: Path, a: Path, b: Path, *,
+              message: str | None = None) -> int:
     """Invoke the external agent runner script.
 
     The runner is a bash script (`scripts/run-agent-cc.sh` by default) that
@@ -79,6 +80,8 @@ def run_agent(workspace: Path, a: Path, b: Path) -> int:
     env["REHEARSE_AGENT_TIMEOUT"] = str(config.REHEARSE_AGENT_TIMEOUT)
     if config.REHEARSE_MCP_CONFIG is not None:
         env["REHEARSE_MCP_CONFIG"] = str(config.REHEARSE_MCP_CONFIG)
+    if message is not None:
+        env["REHEARSE_AGENT_MESSAGE"] = message
 
     runner = str(config.REHEARSE_AGENT_RUNNER)
     return subprocess.run([runner], env=env).returncode

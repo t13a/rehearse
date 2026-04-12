@@ -24,6 +24,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_run = sub.add_parser("run", help="run the agent for a session")
     p_run.add_argument("session_id")
+    p_run.add_argument("-m", "--message", default=None,
+                       help="message to pass to the agent")
 
     p_discard = sub.add_parser("discard", help="mark a session as discarded")
     p_discard.add_argument("session_id")
@@ -31,11 +33,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_purge = sub.add_parser("purge", help="delete a session workspace")
     p_purge.add_argument("session_id")
 
-    p_commit = sub.add_parser("commit", help="commit a session's plan (stub)")
+    p_commit = sub.add_parser("commit", help="commit a session's plan")
     p_commit.add_argument("session_id")
-
-    p_resume = sub.add_parser("resume", help="resume a session (stub)")
-    p_resume.add_argument("session_id")
 
     return parser
 
@@ -50,15 +49,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         case "status":
             return commands.cmd_status(args.session_id)
         case "run":
-            return commands.cmd_run(args.session_id)
+            return commands.cmd_run(args.session_id, message=args.message)
         case "discard":
             return commands.cmd_discard(args.session_id)
         case "purge":
             return commands.cmd_purge(args.session_id)
         case "commit":
             return commands.cmd_commit(args.session_id)
-        case "resume":
-            return commands.cmd_resume(args.session_id)
         case _:
             parser.error(f"unknown command: {args.command}")
             return 2
