@@ -104,7 +104,7 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
 
-    allowed = (SessionStatus.created, SessionStatus.done, SessionStatus.failed)
+    allowed = (SessionStatus.created, SessionStatus.done, SessionStatus.failed, SessionStatus.committed)
     if meta.status not in allowed:
         print(
             f"cannot run session in status={meta.status.value}",

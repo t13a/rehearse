@@ -2,26 +2,24 @@
 
 ## 状態遷移
 
-```
-    [create]
-      ↓ (workspace + c/d 構築)
-   [created]
-      ↓ (rehearse run)
-   [running]
-      ↓ (container 終了)
-  ┌───┴────┐
-  ↓        ↓
-[done]  [failed]
-  │        │
-  └────┬───┘
-       ↓ (人間レビュー)
-     ┌─┼──────┐
-     ↓ ↓      ↓
- [committed] [discarded] [run -m → running]
-     │          │
-     └──────────┘
-          ↓ (任意のタイミングで物理削除)
-       [purged]
+```mermaid
+stateDiagram-v2
+    [*] --> created : rehearse create
+    created --> running : rehearse run
+    running --> not_running
+    state not_running { 
+      [*] --> runnable
+      state runnable {
+        [*] --> done : d/.done あり
+        [*] --> failed : d/.done なし
+        done --> committed : rehearse commit
+        failed --> committed : rehearse commit
+        committed --> committed : rehearse commit (冪等)
+      }
+      runnable --> discarded : rehearse discard
+    }
+    not_running --> running : rehearse run (追加指示)
+    not_running --> [*] : rehearse purge
 ```
 
 ## 状態の定義
