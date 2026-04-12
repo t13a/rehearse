@@ -183,8 +183,20 @@ def cmd_commit(session_id: str) -> int:
     write_meta(session_dir, meta)
     print(
         f"committed: moved={stats.moved} already_moved={stats.already_moved} "
-        f"skipped_b={stats.skipped_b} skipped_file={stats.skipped_file}"
+        f"skipped_b={stats.skipped_b} skipped_file={stats.skipped_file} "
+        f"inbox_remaining={stats.inbox_remaining} a_remaining={stats.a_remaining}"
     )
+    if stats.inbox_remaining > 0:
+        print(
+            f"warning: {stats.inbox_remaining} file(s) in inbox/ were not moved to archive/",
+            file=sys.stderr,
+        )
+    elif stats.a_remaining > 0:
+        print(
+            f"warning: inbox/ is empty but {stats.a_remaining} file(s) remain in A — "
+            f"create a new session to process them",
+            file=sys.stderr,
+        )
     return 0
 
 

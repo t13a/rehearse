@@ -20,6 +20,8 @@ class CommitStats:
     already_moved: int = 0
     skipped_b: int = 0
     skipped_file: int = 0
+    inbox_remaining: int = 0
+    a_remaining: int = 0
 
 
 def _now_iso() -> str:
@@ -49,6 +51,17 @@ def commit_session(session_dir: Path, a: Path, b: Path) -> CommitStats:
                     stats.skipped_file += 1
                     continue
                 _handle_symlink(entry, archive, a, b, a_prefix, b_prefix, stats, fh)
+
+        inbox = data / "inbox"
+        for dirpath, _dn, fnames in os.walk(inbox, followlinks=False):
+            for name in fnames:
+                entry = Path(dirpath) / name
+                if entry.is_symlink() and Path(os.readlink(entry)).exists():
+                    stats.inbox_remaining += 1
+
+        for dirpath, _dn, fnames in os.walk(a, followlinks=False):
+            for name in fnames:
+                stats.a_remaining += 1
 
         _log(fh, op="done", **asdict(stats))
 
