@@ -2,7 +2,7 @@
 
 ## 基本方針
 
-`commit` は `d/` の symlink ツリーを辿り、 symlink の target が `a/` 配下 (= A 由来) のものだけ実ファイルを rename する。 `b/` 配下 (= 既存 B への symlink) と `.FYI.md` は何もしない。
+`commit` は `archive/` の symlink ツリーを辿り、 symlink の target が `refs/a/` 配下 (= A 由来) のものだけ実ファイルを rename する。 `refs/b/` 配下 (= 既存 B への symlink) と `.FYI.md` は何もしない。
 
 3 つの性質を満たす:
 
@@ -15,21 +15,21 @@
 ```python
 def commit(workspace: Path, A: Path, B: Path, log: LogFile):
     data = workspace / "data"
-    d = data / "d"
-    a_prefix = str(data / "a") + "/"
-    b_prefix = str(data / "b") + "/"
+    archive = data / "archive"
+    a_prefix = str(data / "refs" / "a") + "/"
+    b_prefix = str(data / "refs" / "b") + "/"
 
-    for entry in walk(d):
+    for entry in walk(archive):
         if entry.is_symlink():
-            handle_symlink(entry, d, A, B, a_prefix, b_prefix, log)
+            handle_symlink(entry, archive, A, B, a_prefix, b_prefix, log)
         elif entry.is_file():
             # .FYI.md のような実ファイル → B には移動しない
             continue
 
-def handle_symlink(link: Path, d: Path, A: Path, B: Path,
+def handle_symlink(link: Path, archive: Path, A: Path, B: Path,
                    a_prefix: str, b_prefix: str, log: LogFile):
     target = os.readlink(link)            # 文字列としての target
-    rel = link.relative_to(d)              # d/ からの相対パス
+    rel = link.relative_to(archive)       # archive/ からの相対パス
     dst = B / rel                          # 実 B 内の配置先
 
     if target.startswith(a_prefix):
@@ -65,7 +65,7 @@ def handle_symlink(link: Path, d: Path, A: Path, B: Path,
         raise CommitAbort(f"unexpected symlink target: {target}")
 
 def resolve_target_to_real_A(target: str, a_prefix: str, A: Path) -> Path:
-    # target が "/opt/rehearse/sessions/<id>/data/a/foo.flac" のとき
+    # target が "/opt/rehearse/sessions/<id>/data/refs/a/foo.flac" のとき
     # a_prefix を剥いで A/foo.flac にマップする
     suffix = target[len(a_prefix):]
     return A / suffix
@@ -73,7 +73,7 @@ def resolve_target_to_real_A(target: str, a_prefix: str, A: Path) -> Path:
 
 ## なぜ workspace 起点の absolute path で比較するか
 
-symlink の target は `workspace/data/a/...` または `workspace/data/b/...` の 2 系統しかないという不変条件を立てている (C/D 構築時にそう作る)。
+symlink の target は `workspace/data/refs/a/...` または `workspace/data/refs/b/...` の 2 系統しかないという不変条件を立てている (inbox/archive 構築時にそう作る)。
 
 target 文字列の prefix で分岐するので:
 
@@ -97,9 +97,9 @@ target 文字列の prefix で分岐するので:
 ## `.FYI.md` の扱い
 
 - commit 中は **完全にスキップ** する
-- workspace 内 (`d/` の中) にそのまま残る
+- workspace 内 (`archive/` の中) にそのまま残る
 - B のライブラリには混入しない (B のクリーンネスを維持)
-- レビュー時・後日の振り返り時に workspace/d/ 内で参照
+- レビュー時・後日の振り返り時に workspace/archive/ 内で参照
 
 ## rollback (commit 中) は必要ないか
 

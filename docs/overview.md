@@ -15,22 +15,22 @@
 
 セッション前に workspace を作り、内部に:
 
-- `c/` : `A` のファイル全部を symlink 化したツリー (未処理プール)
-- `d/` : `B` のファイル全部を symlink 化したツリー (既存ライブラリの写し)
+- `inbox/` : `A` のファイル全部を symlink 化したツリー (未処理プール)
+- `archive/` : `B` のファイル全部を symlink 化したツリー (既存ライブラリの写し)
 
-agent はセッション中、`c/` にある symlink を `d/` の「置きたい場所」に `mv` するだけ。これが「配置計画」になる。実ファイル ( `A` / `B` ) はセッション中一切変化しない。
+agent はセッション中、`inbox/` にある symlink を `archive/` の「置きたい場所」に `mv` するだけ。これが「配置計画」になる。実ファイル ( `A` / `B` ) はセッション中一切変化しない。
 
-セッション終了後、人間が `d/` のツリーを見て計画を承認すれば、`commit` が実ファイルを `A → B` に rename する。却下なら `discard` で workspace を放棄する (実ファイルは無傷)。
+セッション終了後、人間が `archive/` のツリーを見て計画を承認すれば、`commit` が実ファイルを `A → B` に rename する。却下なら `discard` で workspace を放棄する (実ファイルは無傷)。
 
 ## なぜ symlink か
 
 ハードリンクでも同様の「コピーしないコピー」は実現できるが、symlink には以下の強みがある:
 
-- **プロビナンスが target に埋め込まれる** — `ls -l d/music/album/01.flac` で「これは `a/inbox/xxxx.flac` 由来」と一発で読める
+- **プロビナンスが target に埋め込まれる** — `ls -l archive/music/album/01.flac` で「これは `refs/a/inbox/xxxx.flac` 由来」と一発で読める
 - **標準の shell ツールだけで agent が動く** — `mv` / `mkdir` / `ls` / `find` で完結、カスタム API 不要
 - **セッション中 `A` / `B` が完全に pristine** — 外部の indexer や同期ツールから中間状態が見えない
 - **配置計画 = workspace のディレクトリツリー**という自己記述的な状態管理 — manifest のような二重化が不要
-- **「未処理」と「配置済み」が `c/` と `d/` の所在で自然に表現される** — skip list などを別途持たなくてよい
+- **「未処理」と「配置済み」が `inbox/` と `archive/` の所在で自然に表現される** — skip list などを別途持たなくてよい
 
 ## 核となる不変条件
 
@@ -39,7 +39,7 @@ agent はセッション中、`c/` にある symlink を `d/` の「置きたい
 1. **セッション中、`A` と `B` の実ファイルは一切変化しない** (read-only マウント + symlink 越しの操作)
 2. **agent は symlink を `mv` で動かすこと以外できない** (`rm` / `cp` / `ln` などを道具箱から除外)
 3. **symlink は絶対パス** (相対だと `mv` で壊れる)
-4. **`a/` `b/` 直下のディレクトリ構造 (workspace 親) は agent から書き換え不可** (親の write 権限を落とす)
+4. **`refs/` 直下のディレクトリ構造 (workspace 親) は agent から書き換え不可** (親の write 権限を落とす)
 5. **symlink 上書きの禁止** (`mv -n` 強制)
 
 失敗は常に「workspace に中途半端な symlink の配置が残る」という形でしか現れない。 `A` / `B` の一貫性は機構レベルで保たれる。

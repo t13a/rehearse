@@ -50,7 +50,7 @@ def cmd_create(a_arg: str, b_arg: str) -> int:
     agent_home = session_dir / "home" / "agent"
     agent_home.mkdir(parents=True)
 
-    docker.chown_container([data_dir / "c", agent_home])
+    docker.chown_container([data_dir / "inbox", agent_home])
 
     subprocess.run(
         ["bash", str(GIT_SNAPSHOT_SCRIPT), str(session_dir)],
@@ -119,7 +119,7 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
     rc = docker.run_agent(session_dir, meta.a, meta.b, message=message)
 
     meta.ended_at = _now()
-    done_flag = session_dir / "data" / "d" / ".done"
+    done_flag = session_dir / "data" / "archive" / ".done"
     if done_flag.exists():
         meta.status = SessionStatus.done
         meta.exit_reason = "normal"

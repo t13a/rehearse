@@ -54,15 +54,15 @@ def test_full_lifecycle(
     assert commands.cmd_run(session_id) == 0
     meta = read_meta(session_dir)
     assert meta.status == SessionStatus.done
-    assert (session_dir / "data" / "d" / ".done").exists()
+    assert (session_dir / "data" / "archive" / ".done").exists()
 
     # status (detail)
     assert commands.cmd_status(session_id) == 0
     detail = capsys.readouterr().out
     assert '"status": "done"' in detail
 
-    # commit — fake runner doesn't move c/ into d/, so this is a no-op
-    # (only B-mirror symlinks in d/, all skipped). A and B stay untouched.
+    # commit — fake runner doesn't move inbox/ into archive/, so this is a no-op
+    # (only B-mirror symlinks in archive/, all skipped). A and B stay untouched.
     assert commands.cmd_commit(session_id) == 0
     meta = read_meta(session_dir)
     assert meta.status == SessionStatus.committed

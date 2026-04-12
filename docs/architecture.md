@@ -11,10 +11,11 @@
 ├── meta.json                # 起動時刻, A の実パス, B の実パス, scope, status
 ├── commit.log               # commit 時に追記
 └── data/                    # コンテナにマウントされる唯一のサブツリー
-    ├── a -> /host/path/A    # A への symlink (read-only 解決)
-    ├── b -> /host/path/B    # B への symlink (read-only 解決)
-    ├── c/                   # A のミラー (agent の未処理プール)
-    ├── d/                   # B のミラー + agent の配置計画
+    ├── refs/
+    │   ├── a -> /host/path/A    # A への symlink (read-only 参照)
+    │   └── b -> /host/path/B    # B への symlink (read-only 参照)
+    ├── inbox/               # A のミラー (agent の未処理プール)
+    ├── archive/             # B のミラー + agent の配置計画
     │   └── .done            # 正常終了時にエージェントが作る
     ├── transcript.jsonl     # Claude Code の会話ログ
     └── agent_stdout.log     # エージェントの stdout
@@ -22,25 +23,25 @@
 
 `<session-id>` は UNIX 秒 (`1744296235` のような 10 桁文字列)。ソート可能で短いので、 symlink target に繰り返し現れても agent の入力トークンやレビュー負荷を圧迫しない。秒内衝突は `flock` で検知して再試行する。
 
-## 4 つのディレクトリの役割
+## ディレクトリの役割
 
 | ディレクトリ | 実体 | 意味 |
 |---|---|---|
-| `a/` | symlink → 実 A | 移動元 (read-only) |
-| `b/` | symlink → 実 B | 移動先 (read-only だがコンテナ外では後の commit で rw として扱う) |
-| `c/` | 実ディレクトリ | A の写し。 agent の「未処理」プール。各 entry は `a/` 配下への symlink |
-| `d/` | 実ディレクトリ | B の写しから始まり、 agent が `c/` から symlink を `mv` して配置計画を組み立てる場所 |
+| `refs/a/` | symlink → 実 A | 移動元 (read-only) |
+| `refs/b/` | symlink → 実 B | 移動先 (read-only だがコンテナ外では後の commit で rw として扱う) |
+| `inbox/` | 実ディレクトリ | A の写し。 agent の「未処理」プール。各 entry は `refs/a/` 配下への symlink |
+| `archive/` | 実ディレクトリ | B の写しから始まり、 agent が `inbox/` から symlink を `mv` して配置計画を組み立てる場所 |
 
 ## symlink のルール
 
-**絶対パス**: C/D 内の symlink はすべて workspace 起点の絶対パスで作る。
+**絶対パス**: inbox/archive 内の symlink はすべて workspace 起点の絶対パスで作る。
 
-例: `workspace/data/c/foo.flac` の target は `/opt/rehearse/sessions/<id>/data/a/foo.flac`
+例: `workspace/data/inbox/foo.flac` の target は `/opt/rehearse/sessions/<id>/data/refs/a/foo.flac`
 
 解決の連鎖:
 
-1. `workspace/data/c/foo.flac` の target = `/opt/rehearse/sessions/<id>/data/a/foo.flac`
-2. `/opt/rehearse/sessions/<id>/data/a` は symlink → `/host/path/A`
+1. `workspace/data/inbox/foo.flac` の target = `/opt/rehearse/sessions/<id>/data/refs/a/foo.flac`
+2. `/opt/rehearse/sessions/<id>/data/refs/a` は symlink → `/host/path/A`
 3. 最終的に `/host/path/A/foo.flac` にアクセスする
 
 **相対パス禁止**: `../a/foo.flac` のような相対 symlink は `mv` で配置を動かしたときに target 解決が壊れる。絶対パスのみを許可し、harness 起動時に検証する。
@@ -50,27 +51,28 @@
 agent の UID から見て:
 
 ```
-workspace/               owner: harness, mode 755    → host 側メタの置き場、 container 非表示
-workspace/data/          owner: harness, mode 755    → コンテナの mount 先、直下の add/remove 不可
-workspace/data/a         symlink                      → 親が書込不可なので動かせない
-workspace/data/b         symlink                      → 同上
-workspace/data/c/        owner: harness, mode 777    → 書込可、 agent が自分の symlink を `mv` する出発点
-workspace/data/c/*       owner: agent                 → setup 時に chown コンテナでハンドオフ済み
-workspace/data/d/        owner: harness, mode 1777   → sticky + 書込可、中身の既存エントリは動かせない
-workspace/data/d/**/     owner: harness, mode 1777   → B-mirror の各サブディレクトリ (sticky)
-workspace/data/d/**/*    owner: harness              → B-mirror の symlink 本体 (harness 所有)
+workspace/                   owner: harness, mode 755    → host 側メタの置き場、 container 非表示
+workspace/data/              owner: harness, mode 755    → コンテナの mount 先、直下の add/remove 不可
+workspace/data/refs/         owner: harness, mode 755    → 参照用、書込不可
+workspace/data/refs/a        symlink                      → 親が書込不可なので動かせない
+workspace/data/refs/b        symlink                      → 同上
+workspace/data/inbox/        owner: harness, mode 777    → 書込可、 agent が自分の symlink を `mv` する出発点
+workspace/data/inbox/*       owner: agent                 → setup 時に chown コンテナでハンドオフ済み
+workspace/data/archive/      owner: harness, mode 1777   → sticky + 書込可、中身の既存エントリは動かせない
+workspace/data/archive/**/   owner: harness, mode 1777   → B-mirror の各サブディレクトリ (sticky)
+workspace/data/archive/**/*  owner: harness              → B-mirror の symlink 本体 (harness 所有)
 ```
 
-`data/` の write 権限を落とすことで、 `a`/`b` の symlink 自体を `mv` で剥がされるのを防ぐ。 workspace ルート (`meta.json`, `commit.log`, `.git/`) は container に一切マウントされないので、 agent からは観測不能。
+`data/` と `refs/` の write 権限を落とすことで、 `refs/a`/`refs/b` の symlink 自体を `mv` で剥がされるのを防ぐ。 workspace ルート (`meta.json`, `commit.log`, `.git/`) は container に一切マウントされないので、 agent からは観測不能。
 
-**sticky bit + 所有権ハンドオフによる B-mirror の保護**: `d/` とその配下の全サブディレクトリには sticky bit を立てておく (`chmod 1777`)。 `d/` の初期内容 (B のミラー = サブディレクトリ + symlink) は harness 所有で作る。 sticky bit は「エントリの所有者でない限り、 directory 内の既存エントリを unlink / rename できない」という POSIX の挙動を使って、 **agent に B-mirror の構造と symlink を物理的に触らせない**ことを実現する:
+**sticky bit + 所有権ハンドオフによる B-mirror の保護**: `archive/` とその配下の全サブディレクトリには sticky bit を立てておく (`chmod 1777`)。 `archive/` の初期内容 (B のミラー = サブディレクトリ + symlink) は harness 所有で作る。 sticky bit は「エントリの所有者でない限り、 directory 内の既存エントリを unlink / rename できない」という POSIX の挙動を使って、 **agent に B-mirror の構造と symlink を物理的に触らせない**ことを実現する:
 
 - 既存 B-mirror symlink を `mv` しようとすると EPERM (所有者は harness)
 - B-mirror サブディレクトリを `mv` / `rmdir` しようとすると EPERM (同上)
 - 一方で write 権限は開けてあるので、 agent は B-mirror 内に**新しい**エントリを追加できる (sticky は既存エントリにしか効かない)
 - agent が作った subdir や移動してきた symlink は agent 所有・非 sticky なので、自分の配下では自由に reorg できる
 
-**所有権ハンドオフ**: sticky bit enforcement は「所有者である限り動かせる」という対称側も持つ。 agent が `c/` から `d/` に運んできた symlink を後から**別の場所に動かし直す** (do-over) ためには、 agent 自身がその symlink の owner である必要がある。そこで `create` の末尾で短命の root コンテナを 1 つ叩いて `chown -Rh <agent_uid>:<agent_gid> c/` を実行し、 `c/` 配下の symlink をすべて agent UID にハンドオフする。 `rename(2)` は owner を保存するので、 `mv c/foo.flac d/music/...` としても owner は agent のままで、あとから `mv` で別の場所に動かし直せる。
+**所有権ハンドオフ**: sticky bit enforcement は「所有者である限り動かせる」という対称側も持つ。 agent が `inbox/` から `archive/` に運んできた symlink を後から**別の場所に動かし直す** (do-over) ためには、 agent 自身がその symlink の owner である必要がある。そこで `create` の末尾で短命の root コンテナを 1 つ叩いて `chown -Rh <agent_uid>:<agent_gid> inbox/` を実行し、 `inbox/` 配下の symlink をすべて agent UID にハンドオフする。 `rename(2)` は owner を保存するので、 `mv inbox/foo.flac archive/music/...` としても owner は agent のままで、あとから `mv` で別の場所に動かし直せる。
 
 この結果、 agent が「動かしていいのは自分で持ち込んだ symlink だけ」という不変条件が機構的に保証され、 agent 側に target prefix を見て判断させる必要がなくなる。また、配置の do-over も何度でもできる。
 
@@ -101,10 +103,11 @@ docker run --rm \
 ```
 /opt/rehearse/sessions/<id>/
 └── data/                    (workspace/data のみがマウントされる)
-    ├── a -> /host/path/A    (ro マウント経由で読める)
-    ├── b -> /host/path/B    (ro マウント経由で読める)
-    ├── c/
-    └── d/
+    ├── refs/
+    │   ├── a -> /host/path/A    (ro マウント経由で読める)
+    │   └── b -> /host/path/B    (ro マウント経由で読める)
+    ├── inbox/
+    └── archive/
 ```
 
 ホスト側の commit スクリプトも同じパスを使って symlink を辿れる。
@@ -113,7 +116,7 @@ docker run --rm \
 
 Claude Code は `~/.claude/projects/...` に会話履歴を吐く。これがコンテナ揮発領域にあると `--rm` で消えてしまうので、 agent の HOME を **workspace 内に永続化**する:
 
-- `rehearse create` がセッションごとに `workspace/home/agent/` を掘り、 `c/` と一緒に agent UID へ chown ハンドオフする
+- `rehearse create` がセッションごとに `workspace/home/agent/` を掘り、 `inbox/` と一緒に agent UID へ chown ハンドオフする
 - runner script はこれを `/home/agent` に rw で bind mount し、 `HOME=/home/agent` を `-e` で渡す
 - FHS に沿った `/home/agent` を選んだのは、 Claude Code が前提とする「ホームディレクトリらしい場所」と整合させるため
 - ホスト側のパスが `workspace/home/agent` なのは workspace レイアウトの対称性を取るため
@@ -246,7 +249,7 @@ git commit -q -m "session start"
 
 ### なぜ git か
 
-commit 前のレビュー時、 `data/d/` は B の full mirror に agent の配置計画が混ざった状態になる。 B が大きいほど「どこが変わったか」を目視で探すのは非現実的。差分情報自体は `data/d/` の symlink target に全部埋まっているので、初期状態を git に保存しておけば、それを commodity な git ツールチェーンで抽出できる:
+commit 前のレビュー時、 `data/archive/` は B の full mirror に agent の配置計画が混ざった状態になる。 B が大きいほど「どこが変わったか」を目視で探すのは非現実的。差分情報自体は `data/archive/` の symlink target に全部埋まっているので、初期状態を git に保存しておけば、それを commodity な git ツールチェーンで抽出できる:
 
 - `git status` — セッション中に動いた symlink / 追加された `.FYI.md` / `.done` の一覧
 - `git diff` — symlink target の変化 (= プロビナンスの変化) が直接読める

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Drop-in replacement for scripts/run-agent-cc.sh used by the test suite.
-# Reproduces the Step 2 placeholder behavior with busybox: ls c/ and d/, then
-# touch d/.done. No API key, no rehearse-agent image.
+# Reproduces the Step 2 placeholder behavior with busybox: ls inbox/ and archive/, then
+# touch archive/.done. No API key, no rehearse-agent image.
 set -euo pipefail
 
 : "${REHEARSE_SESSION_DATA:?required}"
@@ -14,4 +14,4 @@ exec docker run --rm \
   -v "${REHEARSE_SESSION_DATA}:${REHEARSE_SESSION_DATA}:rw" \
   -w "${REHEARSE_SESSION_DATA}" \
   "${REHEARSE_AGENT_IMAGE}" \
-  sh -c 'ls c/ && ls d/ && touch d/.done'
+  sh -c 'ls inbox/ && ls archive/ && touch archive/.done'

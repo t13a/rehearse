@@ -29,31 +29,31 @@ def test_create_builds_workspace(
     session_dir = config.SESSIONS_DIR / session_id
     data = session_dir / "data"
 
-    assert (data / "a").is_symlink()
-    assert (data / "b").is_symlink()
-    assert (data / "a").resolve() == a.resolve()
-    assert (data / "b").resolve() == b.resolve()
+    assert (data / "refs" / "a").is_symlink()
+    assert (data / "refs" / "b").is_symlink()
+    assert (data / "refs" / "a").resolve() == a.resolve()
+    assert (data / "refs" / "b").resolve() == b.resolve()
 
-    # c/ mirrors A
-    assert (data / "c" / "file1.txt").is_symlink()
-    assert (data / "c" / "sub" / "file2.txt").is_symlink()
+    # inbox/ mirrors A
+    assert (data / "inbox" / "file1.txt").is_symlink()
+    assert (data / "inbox" / "sub" / "file2.txt").is_symlink()
 
-    # d/ mirrors B
-    assert (data / "d" / "existing" / "old.txt").is_symlink()
+    # archive/ mirrors B
+    assert (data / "archive" / "existing" / "old.txt").is_symlink()
 
-    # c/ symlink target points via data/a/...
-    c_link = data / "c" / "file1.txt"
-    target = os.readlink(c_link)
-    assert target == str(data / "a" / "file1.txt")
+    # inbox/ symlink target points via data/refs/a/...
+    inbox_link = data / "inbox" / "file1.txt"
+    target = os.readlink(inbox_link)
+    assert target == str(data / "refs" / "a" / "file1.txt")
 
-    # d/ and subdirs are sticky (mode 1777)
-    d_mode = stat.S_IMODE(os.stat(data / "d").st_mode)
+    # archive/ and subdirs are sticky (mode 1777)
+    d_mode = stat.S_IMODE(os.stat(data / "archive").st_mode)
     assert d_mode == 0o1777
-    sub_mode = stat.S_IMODE(os.stat(data / "d" / "existing").st_mode)
+    sub_mode = stat.S_IMODE(os.stat(data / "archive" / "existing").st_mode)
     assert sub_mode == 0o1777
 
-    # c/ symlinks owned by agent UID after chown handoff
-    c_stat = os.lstat(c_link)
+    # inbox/ symlinks owned by agent UID after chown handoff
+    c_stat = os.lstat(inbox_link)
     assert c_stat.st_uid == config.REHEARSE_AGENT_UID
     assert c_stat.st_gid == config.REHEARSE_AGENT_GID
 

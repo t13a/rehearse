@@ -1,4 +1,4 @@
-"""Build the workspace `data/` tree: a, b symlinks + c/ and d/ mirrors."""
+"""Build the workspace `data/` tree: refs/{a,b} symlinks + inbox/ and archive/ mirrors."""
 
 from __future__ import annotations
 
@@ -44,19 +44,19 @@ def _mirror(
 def build_workspace_data(
     data_dir: Path, a: Path, b: Path
 ) -> None:
-    """Construct `data/` contents: a, b top-level symlinks + c/ + d/ mirrors.
+    """Construct `data/` contents: refs/{a,b} symlinks + inbox/ + archive/ mirrors.
 
     Assumes `data_dir` already exists and is empty.
     """
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    (data_dir / "a").symlink_to(a)
-    (data_dir / "b").symlink_to(b)
+    refs_dir = data_dir / "refs"
+    refs_dir.mkdir()
+    (refs_dir / "a").symlink_to(a)
+    (refs_dir / "b").symlink_to(b)
 
-    # Symlink targets use the workspace-relative paths via data/a and data/b,
-    # so the same absolute path works both on host and inside the container.
-    a_link = data_dir / "a"
-    b_link = data_dir / "b"
+    ref_a = refs_dir / "a"
+    ref_b = refs_dir / "b"
 
-    _mirror(a, data_dir / "c", a_link, C_MODE)
-    _mirror(b, data_dir / "d", b_link, D_MODE)
+    _mirror(a, data_dir / "inbox", ref_a, C_MODE)
+    _mirror(b, data_dir / "archive", ref_b, D_MODE)
