@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from rehearse import config, docker
+from rehearse.profile import effective_profile
 
 
 def _make_dump_runner(tmp_path: Path, dump_path: Path) -> Path:
@@ -51,9 +52,8 @@ def test_run_agent_passes_required_env(
     dump = tmp_path / "env.dump"
     runner = _make_dump_runner(tmp_path, dump)
 
-    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
-    monkeypatch.delenv("REHEARSE_MCP_CONFIG", raising=False)
     config.reload()
+    profile = effective_profile({"agent_runner": str(runner)})
 
     workspace = tmp_path / "ws"
     a = tmp_path / "A"
@@ -62,7 +62,7 @@ def test_run_agent_passes_required_env(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b)
+    rc = docker.run_agent(workspace, a, b, profile)
     assert rc == 0
 
     env = _parse_env(dump)
@@ -75,10 +75,10 @@ def test_run_agent_passes_required_env(
     assert env["REHEARSE_SESSION_HOME"] == str(workspace / "home" / "agent")
     assert env["REHEARSE_SESSION_A"] == str(a)
     assert env["REHEARSE_SESSION_B"] == str(b)
-    assert env["REHEARSE_AGENT_IMAGE"] == config.REHEARSE_AGENT_IMAGE
-    assert env["REHEARSE_AGENT_UID"] == str(config.REHEARSE_AGENT_UID)
-    assert env["REHEARSE_AGENT_GID"] == str(config.REHEARSE_AGENT_GID)
-    assert env["REHEARSE_AGENT_TIMEOUT"] == str(config.REHEARSE_AGENT_TIMEOUT)
+    assert env["REHEARSE_AGENT_IMAGE"] == config.DEFAULT_AGENT_IMAGE
+    assert env["REHEARSE_AGENT_UID"] == str(config.DEFAULT_AGENT_UID)
+    assert env["REHEARSE_AGENT_GID"] == str(config.DEFAULT_AGENT_GID)
+    assert env["REHEARSE_AGENT_TIMEOUT"] == str(config.DEFAULT_AGENT_TIMEOUT)
     assert "REHEARSE_MCP_CONFIG" not in env
 
     config.reload()
@@ -92,9 +92,8 @@ def test_run_agent_passes_mcp_config_when_set(
     mcp = tmp_path / "mcp.json"
     mcp.write_text("{}\n")
 
-    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
-    monkeypatch.setenv("REHEARSE_MCP_CONFIG", str(mcp))
     config.reload()
+    profile = effective_profile({"agent_runner": str(runner), "mcp_config": str(mcp)})
 
     workspace = tmp_path / "ws"
     a = tmp_path / "A"
@@ -103,7 +102,7 @@ def test_run_agent_passes_mcp_config_when_set(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b)
+    rc = docker.run_agent(workspace, a, b, profile)
     assert rc == 0
 
     env = _parse_env(dump)
@@ -118,9 +117,8 @@ def test_run_agent_passes_message_when_set(
     dump = tmp_path / "env.dump"
     runner = _make_dump_runner(tmp_path, dump)
 
-    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
-    monkeypatch.delenv("REHEARSE_MCP_CONFIG", raising=False)
     config.reload()
+    profile = effective_profile({"agent_runner": str(runner)})
 
     workspace = tmp_path / "ws"
     a = tmp_path / "A"
@@ -129,7 +127,7 @@ def test_run_agent_passes_message_when_set(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b, message="追加指示テスト")
+    rc = docker.run_agent(workspace, a, b, profile, message="追加指示テスト")
     assert rc == 0
 
     env = _parse_env(dump)
@@ -144,9 +142,8 @@ def test_run_agent_omits_message_when_none(
     dump = tmp_path / "env.dump"
     runner = _make_dump_runner(tmp_path, dump)
 
-    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
-    monkeypatch.delenv("REHEARSE_MCP_CONFIG", raising=False)
     config.reload()
+    profile = effective_profile({"agent_runner": str(runner)})
 
     workspace = tmp_path / "ws"
     a = tmp_path / "A"
@@ -155,13 +152,37 @@ def test_run_agent_omits_message_when_none(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b)
+    rc = docker.run_agent(workspace, a, b, profile)
     assert rc == 0
 
     env = _parse_env(dump)
     assert "REHEARSE_AGENT_MESSAGE" not in env
 
     config.reload()
+
+
+def test_run_agent_passes_extra_args_when_set(
+    tmp_path: Path,
+) -> None:
+    dump = tmp_path / "env.dump"
+    runner = _make_dump_runner(tmp_path, dump)
+
+    profile = effective_profile(
+        {"agent_runner": str(runner), "agent_extra_args": "--verbose"}
+    )
+
+    workspace = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    workspace.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = docker.run_agent(workspace, a, b, profile)
+    assert rc == 0
+
+    env = _parse_env(dump)
+    assert env["REHEARSE_AGENT_EXTRA_ARGS"] == "--verbose"
 
 
 def test_run_agent_propagates_exit_code(
@@ -171,9 +192,8 @@ def test_run_agent_propagates_exit_code(
     runner.write_text("#!/bin/bash\nexit 7\n")
     runner.chmod(runner.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
-    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(runner))
-    monkeypatch.delenv("REHEARSE_MCP_CONFIG", raising=False)
     config.reload()
+    profile = effective_profile({"agent_runner": str(runner)})
 
     workspace = tmp_path / "ws"
     a = tmp_path / "A"
@@ -182,7 +202,7 @@ def test_run_agent_propagates_exit_code(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b)
+    rc = docker.run_agent(workspace, a, b, profile)
     assert rc == 7
 
     config.reload()

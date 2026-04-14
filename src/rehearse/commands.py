@@ -7,7 +7,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from rehearse import commit, config, docker, mirror, validate, workspace
+from rehearse import commit, docker, mirror, profile as profile_mod, validate, workspace
 from rehearse.meta import SessionMeta, SessionStatus, read_meta, write_meta
 
 
@@ -28,9 +28,16 @@ def _resolve_session_dir(session_id: str) -> Path:
 
 # ---- create ------------------------------------------------------------
 
-def cmd_create(a_arg: str, b_arg: str) -> int:
+def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
     a = Path(a_arg).resolve()
     b = Path(b_arg).resolve()
+
+    try:
+        raw_profile = profile_mod.load_profile_for_create(profile_name)
+        effective_profile = profile_mod.effective_profile(raw_profile)
+    except profile_mod.ProfileError as e:
+        print(f"profile failed: {e}", file=sys.stderr)
+        return 2
 
     try:
         validate.preflight(a, b)
@@ -50,7 +57,7 @@ def cmd_create(a_arg: str, b_arg: str) -> int:
     agent_home = session_dir / "home" / "agent"
     agent_home.mkdir(parents=True)
 
-    docker.chown_container([data_dir / "inbox", agent_home])
+    docker.chown_container([data_dir / "inbox", agent_home], effective_profile)
 
     subprocess.run(
         ["bash", str(GIT_SNAPSHOT_SCRIPT), str(session_dir)],
@@ -64,9 +71,8 @@ def cmd_create(a_arg: str, b_arg: str) -> int:
         a=a,
         b=b,
         workspace=session_dir,
-        agent_image=config.REHEARSE_AGENT_IMAGE,
-        agent_uid=config.REHEARSE_AGENT_UID,
-        agent_gid=config.REHEARSE_AGENT_GID,
+        profile_name=profile_name,
+        profile=raw_profile,
     )
     write_meta(session_dir, meta)
 
@@ -103,6 +109,11 @@ def cmd_status(session_id: str | None) -> int:
 def cmd_run(session_id: str, *, message: str | None = None) -> int:
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
+    try:
+        effective_profile = profile_mod.effective_profile(meta.profile)
+    except profile_mod.ProfileError as e:
+        print(f"profile failed: {e}", file=sys.stderr)
+        return 2
 
     allowed = (SessionStatus.created, SessionStatus.done, SessionStatus.failed, SessionStatus.committed)
     if meta.status not in allowed:
@@ -116,7 +127,9 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
     meta.started_at = _now()
     write_meta(session_dir, meta)
 
-    rc = docker.run_agent(session_dir, meta.a, meta.b, message=message)
+    rc = docker.run_agent(
+        session_dir, meta.a, meta.b, effective_profile, message=message
+    )
 
     meta.ended_at = _now()
     done_flag = session_dir / "data" / "outbox" / ".done"
@@ -154,7 +167,12 @@ def cmd_purge(session_id: str) -> int:
     if meta.status == SessionStatus.running:
         print("cannot purge a running session", file=sys.stderr)
         return 2
-    docker.cleanup_container(session_dir)
+    try:
+        effective_profile = profile_mod.effective_profile(meta.profile)
+    except profile_mod.ProfileError as e:
+        print(f"profile failed: {e}", file=sys.stderr)
+        return 2
+    docker.cleanup_container(session_dir, effective_profile)
     return 0
 
 
@@ -209,5 +227,4 @@ def cmd_exec(session_id: str, argv: list[str]) -> int:
     session_dir = _resolve_session_dir(session_id)
     data_dir = session_dir / "data"
     return subprocess.run(argv, cwd=data_dir).returncode
-
 

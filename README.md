@@ -83,21 +83,43 @@ stat -c '%a %U:%G %n' ~/.local/share/rehearse/sessions/$SID/data/outbox
 - `inbox/` は agent UID (既定 10000:10000) 所有
 - `outbox/` とサブディレクトリは `1777` (sticky、 harness 所有)
 
+## プロファイル
+
+実行時設定は profile JSON に書く。 `rehearse create -p <profile> ...` で指定でき、 `-p` を省略すると `default` profile が使われる。 profile は session 作成時に `meta.json` へ転記されるので、後から profile JSON を編集しても既存 session には影響しない。
+
+profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile は初回 `create` 時に `{}` として自動作成される。各項目は省略可能で、省略時は CLI 側の既定値を使う。相対パスは `$REHEARSE_ROOT` 起点で解決される。
+
+```json
+{
+  "agent_image": "rehearse-agent:latest",
+  "helper_image": "busybox:latest",
+  "agent_runner": "runners/my-agent.sh",
+  "agent_uid": 10000,
+  "agent_gid": 10000,
+  "agent_timeout": 3600,
+  "mcp_config": "mcp/fetch.json",
+  "agent_extra_args": "--output-format stream-json --verbose"
+}
+```
+
+| 項目 | 既定値 | 用途 |
+|---|---|---|
+| `agent_uid` | `10000` | agent コンテナを走らせる UID |
+| `agent_gid` | `10000` | 同 GID |
+| `agent_image` | `rehearse-agent:latest` | agent コンテナの image |
+| `helper_image` | `busybox:latest` | chown / cleanup 用の root コンテナ image |
+| `agent_runner` | `<repo>/scripts/run-agent-cc.sh` | agent を起動する bash スクリプト |
+| `agent_timeout` | `3600` | container 内で `timeout` が `claude` に与える秒数 |
+| `mcp_config` | `null` | Claude Code ネイティブ形式の MCP 設定 JSON のパス |
+| `agent_extra_args` | `null` | `claude` コマンドに渡す追加引数 (スペース区切り) |
+
 ## 環境変数
 
-全て `REHEARSE_` 接頭辞。既定値は [src/rehearse/config.py](src/rehearse/config.py) 参照。
+ユーザー向けの `REHEARSE_` 設定は `REHEARSE_ROOT` だけ。 agent / Docker の設定は profile JSON に書く。
 
 | 変数 | 既定値 | 用途 |
 |---|---|---|
-| `REHEARSE_ROOT` | `~/.local/share/rehearse` | workspace / lock の置き場 |
-| `REHEARSE_AGENT_UID` | `10000` | agent コンテナを走らせる UID |
-| `REHEARSE_AGENT_GID` | `10000` | 同 GID |
-| `REHEARSE_AGENT_IMAGE` | `rehearse-agent:latest` | agent コンテナの image |
-| `REHEARSE_HELPER_IMAGE` | `busybox:latest` | chown / cleanup 用の root コンテナ image |
-| `REHEARSE_AGENT_RUNNER` | `<repo>/scripts/run-agent-cc.sh` | agent を起動する bash スクリプト。差し替えれば別の agent (OpenCode 等) やテスト用の fake runner に切り替えられる |
-| `REHEARSE_AGENT_TIMEOUT` | `3600` | container 内で `timeout` が `claude` に与える秒数 |
-| `REHEARSE_MCP_CONFIG` | (未設定) | Claude Code ネイティブ形式の MCP 設定 JSON のパス。指定すると container に RO mount され `claude --mcp-config` に渡される |
-| `REHEARSE_AGENT_EXTRA_ARGS` | (未設定) | `claude` コマンドに渡す追加引数 (スペース区切り)。例: `--output-format stream-json --verbose --include-partial-messages` |
+| `REHEARSE_ROOT` | `~/.local/share/rehearse` | workspace / lock / profile の置き場 |
 | `ANTHROPIC_API_KEY` | (未設定) | 既定 runner が必須として要求。 host の環境変数から container に pass-through される |
 
 ### MCP 設定の例
@@ -115,16 +137,22 @@ stat -c '%a %U:%G %n' ~/.local/share/rehearse/sessions/$SID/data/outbox
 }
 ```
 
-これを `REHEARSE_MCP_CONFIG=/path/to/mcp.json` で渡すと、 agent から `mcp__fetch__*` ツールが見える。 image を再ビルドする必要はない。
+これを profile の `mcp_config` に指定すると、 agent から `mcp__fetch__*` ツールが見える。 image を再ビルドする必要はない。
 
 ### runner の差し替え
 
 既定の `scripts/run-agent-cc.sh` は Claude Code 用。別の agent を試したいときや、 API キー無しで挙動だけ確認したいときは:
 
 ```bash
-REHEARSE_AGENT_RUNNER=/path/to/your-runner.sh \
-REHEARSE_AGENT_IMAGE=your-image:latest \
-  uv run rehearse run "$SID"
+mkdir -p "$HOME/.local/share/rehearse/profiles"
+cat > "$HOME/.local/share/rehearse/profiles/opencode.json" <<'JSON'
+{
+  "agent_runner": "/path/to/your-runner.sh",
+  "agent_image": "your-image:latest"
+}
+JSON
+
+uv run rehearse create -p opencode /tmp/fakeA /tmp/fakeB
 ```
 
 runner script は環境変数 `REHEARSE_SESSION_*` / `REHEARSE_AGENT_*` から必要な情報を受け取る。契約の詳細は [docs/architecture.md](docs/architecture.md) の「agent runner」節を参照。テスト時に同じ仕組みで使われる軽量 runner は [tests/fake-runner.sh](tests/fake-runner.sh) にある。

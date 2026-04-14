@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -27,9 +28,8 @@ class SessionMeta(BaseModel):
     a: Path
     b: Path
     workspace: Path
-    agent_image: str
-    agent_uid: int
-    agent_gid: int
+    profile_name: str
+    profile: dict[str, Any]
     exit_reason: str | None = None
 
 

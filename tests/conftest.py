@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -9,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from rehearse import config, docker
+from rehearse.profile import effective_profile
 
 
 def _docker_available() -> bool:
@@ -40,14 +42,20 @@ FAKE_RUNNER = Path(__file__).resolve().parent / "fake-runner.sh"
 def rehearse_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point REHEARSE_ROOT at a temp directory and refresh config.
 
-    Also swaps REHEARSE_AGENT_RUNNER to a busybox-backed fake runner so that
-    lifecycle tests don't need the real rehearse-agent image or an API key.
+    Also writes a default profile that points to a busybox-backed fake runner
+    so lifecycle tests don't need the real rehearse-agent image or an API key.
     """
     root = tmp_path / "rehearse"
     monkeypatch.setenv("REHEARSE_ROOT", str(root))
-    monkeypatch.setenv("REHEARSE_AGENT_RUNNER", str(FAKE_RUNNER))
-    monkeypatch.setenv("REHEARSE_AGENT_IMAGE", "busybox:latest")
     config.reload()
+    profiles = root / "profiles"
+    profiles.mkdir(parents=True)
+    (profiles / "default.json").write_text(
+        json.dumps(
+            {"agent_runner": str(FAKE_RUNNER), "agent_image": "busybox:latest"}
+        )
+        + "\n"
+    )
     yield root
 
     # Teardown: any session may contain agent-owned files under data/inbox/.
@@ -56,7 +64,7 @@ def rehearse_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     if root.exists():
         if DOCKER_AVAILABLE:
             try:
-                docker.cleanup_container(root)
+                docker.cleanup_container(root, effective_profile({}))
             except Exception:
                 pass
         else:

@@ -4,7 +4,7 @@
 # Usage:
 #   bash scripts/build-agent-image.sh [tag]
 #
-# Default tag is `rehearse-agent:latest` (matches REHEARSE_AGENT_IMAGE).
+# Default tag is `rehearse-agent:latest` (matches profile agent_image default).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

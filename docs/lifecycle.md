@@ -40,17 +40,19 @@ stateDiagram-v2
 
 ハーネスが提供する CLI:
 
-### `rehearse create <A> <B>`
+### `rehearse create [-p <profile>] <A> <B>`
 
 - 新しい workspace を作成
+- `$REHEARSE_ROOT/profiles/<profile>.json` を読み込み、 raw profile を `meta.json` に転記
+- `-p` 未指定時は `default`。 `profiles/default.json` がなければ `{}` で自動作成
 - `data/` 配下に `refs/{a,b}` symlink、`inbox/`, `outbox/` を構築
 - `meta.json` を書き出し
 - `.gitignore` を書き、 `data/` の初期状態を git にスナップショット (レビュー用、詳細は [architecture.md](architecture.md) の「セッション開始時フック」節)
 
 ### `rehearse run <session> [-m <message>]`
 
-- 外部 runner script (`scripts/run-agent-cc.sh`、 `REHEARSE_AGENT_RUNNER` で差し替え可) を起動し、終了まで block
-- runner は内部で `docker run --rm` を組み立てて agent コンテナ (既定 `rehearse-agent:latest`) を回す
+- `meta.json` に転記済みの profile に既定値を適用し、外部 runner script を起動して終了まで block
+- runner は内部で `docker run --rm` を組み立てて agent コンテナを回す
 - agent (Claude Code) は entrypoint 内で `timeout ${REHEARSE_AGENT_TIMEOUT} claude --print --permission-mode bypassPermissions ...` として起動される
 - 終了後、 `meta.json` の状態と `exit_reason` を更新
   - exit 0 + `outbox/.done` あり → `done` (`exit_reason="normal"`)

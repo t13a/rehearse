@@ -16,6 +16,8 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_create = sub.add_parser("create", help="create a new session")
+    p_create.add_argument("-p", "--profile", default="default",
+                          help="profile name (default: default)")
     p_create.add_argument("a", help="source directory A")
     p_create.add_argument("b", help="target library B")
 
@@ -49,7 +51,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     match args.command:
         case "create":
-            return commands.cmd_create(args.a, args.b)
+            return commands.cmd_create(args.a, args.b, profile_name=args.profile)
         case "status":
             return commands.cmd_status(args.session_id)
         case "run":

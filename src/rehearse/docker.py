@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 from typing import Iterable
 
-from rehearse import config
+from rehearse.profile import EffectiveProfile
 
 
 class DockerError(RuntimeError):
@@ -30,7 +30,7 @@ def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return result
 
 
-def chown_container(paths: Path | Iterable[Path]) -> None:
+def chown_container(paths: Path | Iterable[Path], profile: EffectiveProfile) -> None:
     """Recursively chown one or more host paths to the agent UID/GID.
 
     `-h` so that symlinks themselves get re-owned (not their targets, which are
@@ -48,23 +48,23 @@ def chown_container(paths: Path | Iterable[Path]) -> None:
     for p in path_list:
         cmd += ["-v", f"{p}:{p}:rw"]
     cmd += [
-        config.REHEARSE_HELPER_IMAGE,
+        profile.helper_image,
         "chown", "-Rh",
-        f"{config.REHEARSE_AGENT_UID}:{config.REHEARSE_AGENT_GID}",
+        f"{profile.agent_uid}:{profile.agent_gid}",
     ]
     cmd += [str(p) for p in path_list]
     _run(cmd)
 
 
-def run_agent(workspace: Path, a: Path, b: Path, *,
+def run_agent(workspace: Path, a: Path, b: Path, profile: EffectiveProfile, *,
               message: str | None = None) -> int:
     """Invoke the external agent runner script.
 
     The runner is a bash script (`scripts/run-agent-cc.sh` by default) that
     knows how to launch the underlying agent (Claude Code, OpenCode, ...).
     The harness only passes parameters via environment variables and observes
-    the runner's exit code. Tests swap `REHEARSE_AGENT_RUNNER` to point at a
-    fake runner so they don't need a real agent image or API key.
+    the runner's exit code. Tests set profile.agent_runner to point at a fake
+    runner so they don't need a real agent image or API key.
 
     Returns the runner's exit code (does NOT raise on non-zero).
     """
@@ -74,20 +74,28 @@ def run_agent(workspace: Path, a: Path, b: Path, *,
     env["REHEARSE_SESSION_HOME"] = str(workspace / "home" / "agent")
     env["REHEARSE_SESSION_A"] = str(a)
     env["REHEARSE_SESSION_B"] = str(b)
-    env["REHEARSE_AGENT_IMAGE"] = config.REHEARSE_AGENT_IMAGE
-    env["REHEARSE_AGENT_UID"] = str(config.REHEARSE_AGENT_UID)
-    env["REHEARSE_AGENT_GID"] = str(config.REHEARSE_AGENT_GID)
-    env["REHEARSE_AGENT_TIMEOUT"] = str(config.REHEARSE_AGENT_TIMEOUT)
-    if config.REHEARSE_MCP_CONFIG is not None:
-        env["REHEARSE_MCP_CONFIG"] = str(config.REHEARSE_MCP_CONFIG)
+    env["REHEARSE_AGENT_IMAGE"] = profile.agent_image
+    env["REHEARSE_AGENT_UID"] = str(profile.agent_uid)
+    env["REHEARSE_AGENT_GID"] = str(profile.agent_gid)
+    env["REHEARSE_AGENT_TIMEOUT"] = str(profile.agent_timeout)
+    if profile.mcp_config is not None:
+        env["REHEARSE_MCP_CONFIG"] = str(profile.mcp_config)
+    else:
+        env.pop("REHEARSE_MCP_CONFIG", None)
+    if profile.agent_extra_args is not None:
+        env["REHEARSE_AGENT_EXTRA_ARGS"] = profile.agent_extra_args
+    else:
+        env.pop("REHEARSE_AGENT_EXTRA_ARGS", None)
     if message is not None:
         env["REHEARSE_AGENT_MESSAGE"] = message
+    else:
+        env.pop("REHEARSE_AGENT_MESSAGE", None)
 
-    runner = str(config.REHEARSE_AGENT_RUNNER)
+    runner = str(profile.agent_runner)
     return subprocess.run([runner], env=env).returncode
 
 
-def cleanup_container(workspace: Path) -> None:
+def cleanup_container(workspace: Path, profile: EffectiveProfile) -> None:
     """Delete the workspace tree via a root container.
 
     Agent-owned entries under `inbox/` (and anything the agent moved into `outbox/`)
@@ -103,7 +111,7 @@ def cleanup_container(workspace: Path) -> None:
         "docker", "run", "--rm",
         "--user", "0:0",
         "-v", f"{parent}:{parent}:rw",
-        config.REHEARSE_HELPER_IMAGE,
+        profile.helper_image,
         "rm", "-rf", str(workspace),
     ]
     _run(cmd)

@@ -51,6 +51,9 @@ def test_full_lifecycle(
     assert "created" in listing
 
     # run
+    (config.PROFILES_DIR / "default.json").write_text(
+        '{"agent_runner": "/does/not/exist", "agent_image": "missing:latest"}\n'
+    )
     assert commands.cmd_run(session_id) == 0
     meta = read_meta(session_dir)
     assert meta.status == SessionStatus.done

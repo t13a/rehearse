@@ -6,7 +6,7 @@
 # this script. The script assembles the docker invocation and lets the
 # container's exit code propagate as its own.
 #
-# Swap this out via REHEARSE_AGENT_RUNNER if you want a different agent
+# Swap this out via profile agent_runner if you want a different agent
 # (OpenCode, a local LLM, a fake runner for tests, ...).
 set -euo pipefail
 

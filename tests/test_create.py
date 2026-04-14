@@ -54,8 +54,8 @@ def test_create_builds_workspace(
 
     # inbox/ symlinks owned by agent UID after chown handoff
     c_stat = os.lstat(inbox_link)
-    assert c_stat.st_uid == config.REHEARSE_AGENT_UID
-    assert c_stat.st_gid == config.REHEARSE_AGENT_GID
+    assert c_stat.st_uid == config.DEFAULT_AGENT_UID
+    assert c_stat.st_gid == config.DEFAULT_AGENT_GID
 
     # meta.json parses and has created status
     meta = read_meta(session_dir)
@@ -63,6 +63,41 @@ def test_create_builds_workspace(
     assert meta.session_id == session_id
     assert meta.a == a.resolve()
     assert meta.b == b.resolve()
+    assert meta.profile_name == "default"
+    assert meta.profile["agent_image"] == "busybox:latest"
 
     # git snapshot exists
     assert (session_dir / ".git").is_dir()
+
+
+def test_create_uses_named_profile(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    custom = config.PROFILES_DIR / "custom.json"
+    custom.write_text('{"agent_image": "busybox:latest", "agent_timeout": 42}\n')
+
+    rc = commands.cmd_create(str(a), str(b), profile_name="custom")
+    assert rc == 0
+
+    session_id = capsys.readouterr().out.strip()
+    meta = read_meta(config.SESSIONS_DIR / session_id)
+
+    assert meta.profile_name == "custom"
+    assert meta.profile == {"agent_image": "busybox:latest", "agent_timeout": 42}
+
+
+def test_create_rejects_missing_profile(
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+
+    rc = commands.cmd_create(str(a), str(b), profile_name="missing")
+
+    assert rc == 2
+    assert "profile not found" in capsys.readouterr().err
