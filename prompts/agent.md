@@ -17,31 +17,31 @@
 | `refs/a/` | A への入口 (read-only, 触らない) |
 | `refs/b/` | B への入口 (read-only, 触らない) |
 | `inbox/` | A のファイルへの symlink 一覧 = **未処理プール** |
-| `archive/` | B の既存ツリーの写し = **配置計画** |
+| `outbox/` | B の既存ツリーの写し = **配置計画** |
 
-`inbox/` には A の全ファイルへの symlink があらかじめ並んでいます。これを `archive/` の適切な場所に `mv` するのがあなたの仕事です。
+`inbox/` には A の全ファイルへの symlink があらかじめ並んでいます。これを `outbox/` の適切な場所に `mv` するのがあなたの仕事です。
 
-`archive/` には最初から B の既存ツリーが symlink で並んでいます。これらは**物理的に動かせません** (試すと EPERM になります)。 B の構造を読み取るための参照として使い、そこに馴染むように新しい配置を足してください。
+`outbox/` には最初から B の既存ツリーが symlink で並んでいます。これらは**物理的に動かせません** (試すと EPERM になります)。 B の構造を読み取るための参照として使い、そこに馴染むように新しい配置を足してください。
 
 ---
 
 ## 進め方
 
-1. まず `archive/` の既存ツリーを観察する (`ls archive/`, `find archive -maxdepth 3`, `tree archive` 等)。 B の命名規則や階層構造を掴んでから配置を決める
+1. まず `outbox/` の既存ツリーを観察する (`ls outbox/`, `find outbox -maxdepth 3`, `tree outbox` 等)。 B の命名規則や階層構造を掴んでから配置を決める
 2. `inbox/` から 1 つ選び、ファイル名と (必要なら) Web 検索で中身を推定する
-3. `archive/` の適切なディレクトリに `mv` する。中間ディレクトリが要るなら `mkdir -p` で作ってから
+3. `outbox/` の適切なディレクトリに `mv` する。中間ディレクトリが要るなら `mkdir -p` で作ってから
 4. 判断根拠や補足を残したい場合は `.FYI.md` を書く (後述)
 5. `inbox/` が空になるか、残りが全て「判断不能」になるまで繰り返す
-6. 完了したら `archive/.done` を作って終了する
+6. 完了したら `outbox/.done` を作って終了する
 
 例:
 
 ```
-$ mkdir -p archive/music/artist/album
-$ mv inbox/foo.flac archive/music/artist/album/01-foo.flac
+$ mkdir -p outbox/music/artist/album
+$ mv inbox/foo.flac outbox/music/artist/album/01-foo.flac
 ```
 
-配置先の構造は B の流儀に合わせるのが原則です。既存の `archive/` の命名規則を観察し、それに寄せてください。
+配置先の構造は B の流儀に合わせるのが原則です。既存の `outbox/` の命名規則を観察し、それに寄せてください。
 
 `readlink inbox/foo.flac` で symlink の target を見れば、それが A のどこから来たファイルか (来歴) が分かります。 B のどの場所に置くか判断する材料になります。
 
@@ -59,9 +59,9 @@ $ mv inbox/foo.flac archive/music/artist/album/01-foo.flac
 
 以下の多くは機構的にブロックされますが、「壁がどこにあるか」を知っておくと無駄な試行を避けられます。
 
-1. **symlink は `mv` で動かすだけ**。配置計画を `archive/` のディレクトリツリー 1 本に集約するためです
+1. **symlink は `mv` で動かすだけ**。配置計画を `outbox/` のディレクトリツリー 1 本に集約するためです
 2. **上書きはできません**。同名の場所には動かせないので、別名にするか配置先を見直してください
-3. **`archive/` に最初から並んでいるエントリは動かせません**。 B の構造は所与として扱い、そこに新しい配置を足していく形で計画を組み立ててください
+3. **`outbox/` に最初から並んでいるエントリは動かせません**。 B の構造は所与として扱い、そこに新しい配置を足していく形で計画を組み立ててください
 4. **実ファイル ( A/B のバイナリ) には触れません**。 read-only なので、 symlink を follow して書き込もうとしても失敗します
 5. **実ファイルを新規作成しない**。例外は `.FYI.md` と `.done` だけです
 
@@ -74,10 +74,10 @@ $ mv inbox/foo.flac archive/music/artist/album/01-foo.flac
 配置パターンは 2 種類、どちらでも構いません:
 
 ```
-archive/music/foo/
+outbox/music/foo/
   bar.flac                # 個別ファイル単位
   bar.flac.FYI.md
-archive/music/baz/
+outbox/music/baz/
   FYI.md                  # ディレクトリ単位
   qux.flac
 ```
@@ -96,10 +96,10 @@ archive/music/baz/
 
 ## `.done` : 終了フラグ
 
-全ての配置が完了したと自分で判断したら、 `archive/.done` という空ファイルを作って終了してください。
+全ての配置が完了したと自分で判断したら、 `outbox/.done` という空ファイルを作って終了してください。
 
 ```
-$ touch archive/.done
+$ touch outbox/.done
 ```
 
 **判断が付かないものが残っていても `.done` して構いません**。全件処理することは成功条件ではありません。自信を持って配置できないものは `inbox/` にそのまま残し、 `.FYI.md` に「迷った理由」を添えてから `.done` してください。

@@ -38,11 +38,11 @@ def _read_log_ops(session_dir: Path) -> list[str]:
 def test_commit_moves_a_files(tmp_path: Path, fake_ab: tuple[Path, Path]) -> None:
     a, b = fake_ab
     session_dir = _build_workspace(tmp_path, a, b)
-    archive = session_dir / "data" / "archive"
+    outbox = session_dir / "data" / "outbox"
 
-    # Simulate agent moving inbox/file1.txt → archive/newdir/file1.txt
+    # Simulate agent moving inbox/file1.txt → outbox/newdir/file1.txt
     src_link = session_dir / "data" / "inbox" / "file1.txt"
-    dst_dir = archive / "newdir"
+    dst_dir = outbox / "newdir"
     dst_dir.mkdir()
     src_link.rename(dst_dir / "file1.txt")
 
@@ -59,10 +59,10 @@ def test_commit_moves_a_files(tmp_path: Path, fake_ab: tuple[Path, Path]) -> Non
 def test_commit_is_idempotent(tmp_path: Path, fake_ab: tuple[Path, Path]) -> None:
     a, b = fake_ab
     session_dir = _build_workspace(tmp_path, a, b)
-    archive = session_dir / "data" / "archive"
+    outbox = session_dir / "data" / "outbox"
 
     src_link = session_dir / "data" / "inbox" / "file1.txt"
-    dst_dir = archive / "placed"
+    dst_dir = outbox / "placed"
     dst_dir.mkdir()
     src_link.rename(dst_dir / "file1.txt")
 
@@ -96,14 +96,14 @@ def test_commit_skips_fyi_files(
 ) -> None:
     a, b = fake_ab
     session_dir = _build_workspace(tmp_path, a, b)
-    archive = session_dir / "data" / "archive"
+    outbox = session_dir / "data" / "outbox"
 
     # Add a .FYI.md as a real file
-    (archive / "note.FYI.md").write_text("Some notes\n")
+    (outbox / "note.FYI.md").write_text("Some notes\n")
 
     # Also move an A-origin file
     src_link = session_dir / "data" / "inbox" / "file1.txt"
-    src_link.rename(archive / "file1.txt")
+    src_link.rename(outbox / "file1.txt")
 
     stats = commit.commit_session(session_dir, a, b)
 
@@ -111,8 +111,8 @@ def test_commit_skips_fyi_files(
     assert stats.moved == 1
     # .FYI.md should NOT appear in B
     assert not (b / "note.FYI.md").exists()
-    # .FYI.md stays in archive/
-    assert (archive / "note.FYI.md").exists()
+    # .FYI.md stays in outbox/
+    assert (outbox / "note.FYI.md").exists()
 
 
 def test_commit_aborts_on_conflict(
@@ -125,11 +125,11 @@ def test_commit_aborts_on_conflict(
 
     # Rebuild workspace so b-mirror picks up the collision dir
     session_dir = _build_workspace(tmp_path, a, b)
-    archive = session_dir / "data" / "archive"
+    outbox = session_dir / "data" / "outbox"
 
-    # Agent moves inbox/file1.txt → archive/collision/file1.txt (same name as B's existing)
+    # Agent moves inbox/file1.txt → outbox/collision/file1.txt (same name as B's existing)
     src_link = session_dir / "data" / "inbox" / "file1.txt"
-    src_link.rename(archive / "collision" / "file1.txt")
+    src_link.rename(outbox / "collision" / "file1.txt")
 
     with pytest.raises(commit.CommitAbort, match="both src and dst"):
         commit.commit_session(session_dir, a, b)
@@ -144,10 +144,10 @@ def test_commit_creates_nested_b_dirs(
 ) -> None:
     a, b = fake_ab
     session_dir = _build_workspace(tmp_path, a, b)
-    archive = session_dir / "data" / "archive"
+    outbox = session_dir / "data" / "outbox"
 
     # Agent places file deep in a path that doesn't exist in B
-    deep = archive / "x" / "y" / "z"
+    deep = outbox / "x" / "y" / "z"
     deep.mkdir(parents=True)
     src_link = session_dir / "data" / "inbox" / "file1.txt"
     src_link.rename(deep / "file1.txt")
@@ -164,11 +164,11 @@ def test_commit_reports_unprocessed(
 ) -> None:
     a, b = fake_ab
     session_dir = _build_workspace(tmp_path, a, b)
-    archive = session_dir / "data" / "archive"
+    outbox = session_dir / "data" / "outbox"
 
     # Move only file1.txt, leave sub/file2.txt in inbox
     src_link = session_dir / "data" / "inbox" / "file1.txt"
-    src_link.rename(archive / "file1.txt")
+    src_link.rename(outbox / "file1.txt")
 
     stats = commit.commit_session(session_dir, a, b)
 

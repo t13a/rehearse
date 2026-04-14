@@ -2,7 +2,7 @@
 
 ## 基本方針
 
-`commit` は `archive/` の symlink ツリーを辿り、 symlink の target が `refs/a/` 配下 (= A 由来) のものだけ実ファイルを rename する。 `refs/b/` 配下 (= 既存 B への symlink) と `.FYI.md` は何もしない。
+`commit` は `outbox/` の symlink ツリーを辿り、 symlink の target が `refs/a/` 配下 (= A 由来) のものだけ実ファイルを rename する。 `refs/b/` 配下 (= 既存 B への symlink) と `.FYI.md` は何もしない。
 
 3 つの性質を満たす:
 
@@ -15,21 +15,21 @@
 ```python
 def commit(workspace: Path, A: Path, B: Path, log: LogFile):
     data = workspace / "data"
-    archive = data / "archive"
+    outbox = data / "outbox"
     a_prefix = str(data / "refs" / "a") + "/"
     b_prefix = str(data / "refs" / "b") + "/"
 
-    for entry in walk(archive):
+    for entry in walk(outbox):
         if entry.is_symlink():
-            handle_symlink(entry, archive, A, B, a_prefix, b_prefix, log)
+            handle_symlink(entry, outbox, A, B, a_prefix, b_prefix, log)
         elif entry.is_file():
             # .FYI.md のような実ファイル → B には移動しない
             continue
 
-def handle_symlink(link: Path, archive: Path, A: Path, B: Path,
+def handle_symlink(link: Path, outbox: Path, A: Path, B: Path,
                    a_prefix: str, b_prefix: str, log: LogFile):
     target = os.readlink(link)            # 文字列としての target
-    rel = link.relative_to(archive)       # archive/ からの相対パス
+    rel = link.relative_to(outbox)        # outbox/ からの相対パス
     dst = B / rel                          # 実 B 内の配置先
 
     if target.startswith(a_prefix):
@@ -73,7 +73,7 @@ def resolve_target_to_real_A(target: str, a_prefix: str, A: Path) -> Path:
 
 ## なぜ workspace 起点の absolute path で比較するか
 
-symlink の target は `workspace/data/refs/a/...` または `workspace/data/refs/b/...` の 2 系統しかないという不変条件を立てている (inbox/archive 構築時にそう作る)。
+symlink の target は `workspace/data/refs/a/...` または `workspace/data/refs/b/...` の 2 系統しかないという不変条件を立てている (inbox/outbox 構築時にそう作る)。
 
 target 文字列の prefix で分岐するので:
 
@@ -97,9 +97,9 @@ target 文字列の prefix で分岐するので:
 ## `.FYI.md` の扱い
 
 - commit 中は **完全にスキップ** する
-- workspace 内 (`archive/` の中) にそのまま残る
+- workspace 内 (`outbox/` の中) にそのまま残る
 - B のライブラリには混入しない (B のクリーンネスを維持)
-- レビュー時・後日の振り返り時に workspace/archive/ 内で参照
+- レビュー時・後日の振り返り時に workspace/outbox/ 内で参照
 
 ## rollback (commit 中) は必要ないか
 

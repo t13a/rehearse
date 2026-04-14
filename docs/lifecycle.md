@@ -10,8 +10,8 @@ stateDiagram-v2
     state not_running { 
       [*] --> runnable
       state runnable {
-        [*] --> done : archive/.done あり
-        [*] --> failed : archive/.done なし
+        [*] --> done : outbox/.done あり
+        [*] --> failed : outbox/.done なし
         done --> committed : rehearse commit
         failed --> committed : rehearse commit
         committed --> committed : rehearse commit (冪等)
@@ -28,8 +28,8 @@ stateDiagram-v2
 |---|---|
 | `created` | `rehearse create` が workspace を構築した直後、まだ `run` していない |
 | `running` | コンテナが稼働中 |
-| `done` | `archive/.done` が存在する状態で container 正常終了 |
-| `failed` | `archive/.done` なしで container 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
+| `done` | `outbox/.done` が存在する状態で container 正常終了 |
+| `failed` | `outbox/.done` なしで container 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
 | `committed` | `commit` が完了し、実ファイルが A→B に移動済み |
 | `discarded` | `discard` が実行された (実ファイルは無傷、workspace は audit として残る) |
 | `purged` | workspace が物理削除された |
@@ -43,7 +43,7 @@ stateDiagram-v2
 ### `rehearse create <A> <B>`
 
 - 新しい workspace を作成
-- `data/` 配下に `refs/{a,b}` symlink、`inbox/`, `archive/` を構築
+- `data/` 配下に `refs/{a,b}` symlink、`inbox/`, `outbox/` を構築
 - `meta.json` を書き出し
 - `.gitignore` を書き、 `data/` の初期状態を git にスナップショット (レビュー用、詳細は [architecture.md](architecture.md) の「セッション開始時フック」節)
 
@@ -53,7 +53,7 @@ stateDiagram-v2
 - runner は内部で `docker run --rm` を組み立てて agent コンテナ (既定 `rehearse-agent:latest`) を回す
 - agent (Claude Code) は entrypoint 内で `timeout ${REHEARSE_AGENT_TIMEOUT} claude --print --permission-mode bypassPermissions ...` として起動される
 - 終了後、 `meta.json` の状態と `exit_reason` を更新
-  - exit 0 + `archive/.done` あり → `done` (`exit_reason="normal"`)
+  - exit 0 + `outbox/.done` あり → `done` (`exit_reason="normal"`)
   - exit 124 / 137 → `failed` (`exit_reason="timeout"`)
   - その他 → `failed` (`exit_reason="exit=N"`)
 
@@ -80,7 +80,7 @@ stateDiagram-v2
 
 ### `rehearse commit <session>`
 
-- `archive/` の symlink を辿って実ファイルを A→B に rename
+- `outbox/` の symlink を辿って実ファイルを A→B に rename
 - 冪等な実装 (中断しても再実行で残りを処理)
 - `meta.json` の status を `committed` に更新
 - 詳細: [commit.md](commit.md)
@@ -99,7 +99,7 @@ stateDiagram-v2
 
 ## 規約: `.done`
 
-agent は全ての配置を完了したと判断した時点で `archive/.done` (空ファイルでも可) を作成して終了する。
+agent は全ての配置を完了したと判断した時点で `outbox/.done` (空ファイルでも可) を作成して終了する。
 
 - **正常終了のシグナルに限定**: 異常系は経路が多様で信頼できない。正常系だけで確実に起きることを signal にする
 - `.done` がない状態で container が終了していたら `abort` / `timeout` / `crash` のいずれか
@@ -107,12 +107,12 @@ agent は全ての配置を完了したと判断した時点で `archive/.done` 
 
 ## 規約: `.FYI.md`
 
-agent は配置の判断理由や Web 検索で得た情報を `.FYI.md` として `archive/` 内に残せる。
+agent は配置の判断理由や Web 検索で得た情報を `.FYI.md` として `outbox/` 内に残せる。
 
 **配置パターン** (どちらでもよい):
 
 ```
-archive/music/
+outbox/music/
   foo/
     bar.flac                        # symlink
     bar.flac.FYI.md                 # 個別ファイル単位の補足
@@ -146,7 +146,7 @@ Claude Code は会話ログを `~/.claude/projects/...` に出力する。ハー
 cd /opt/rehearse/sessions/<id>
 git status                     # 変更された symlink / 追加された実ファイルの一覧
 git diff                       # target (= プロビナンス) の変化を読む
-cat data/archive/**/FYI.md           # agent が残した補足を拾う (あれば)
+cat data/outbox/**/FYI.md           # agent が残した補足を拾う (あれば)
 less data/transcript.jsonl     # 判断根拠を遡りたいとき
 ```
 
@@ -161,7 +161,7 @@ less data/transcript.jsonl     # 判断根拠を遡りたいとき
 `commit` 実行後、workspace はこのような状態になる:
 
 - `inbox/` の symlink は dead (target の実ファイルが B に移動したので壊れている)
-- `archive/` の symlink も dead (同上)
+- `outbox/` の symlink も dead (同上)
 - ただし symlink **自体** (文字列) と `.FYI.md` は残る
 - `readlink inbox/foo.flac` → `/opt/rehearse/sessions/<id>/refs/a/foo.flac` (文字列としては読める)
 - 「元は A のどこにあって、 agent が B のどこに置こうとしたか」の記録が完全に残る

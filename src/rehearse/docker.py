@@ -90,7 +90,7 @@ def run_agent(workspace: Path, a: Path, b: Path, *,
 def cleanup_container(workspace: Path) -> None:
     """Delete the workspace tree via a root container.
 
-    Agent-owned entries under `inbox/` (and anything the agent moved into `archive/`)
+    Agent-owned entries under `inbox/` (and anything the agent moved into `outbox/`)
     cannot be unlinked by the harness UID, so we run `rm -rf` as root in a
     container that has the workspace bind-mounted.
 

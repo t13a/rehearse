@@ -1,4 +1,4 @@
-"""Idempotent commit algorithm: rename real files from A to B based on archive/ symlinks."""
+"""Idempotent commit algorithm: rename real files from A to B based on outbox/ symlinks."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def _log(fh: IO[str], **fields: object) -> None:
 
 def commit_session(session_dir: Path, a: Path, b: Path) -> CommitStats:
     data = session_dir / "data"
-    archive = data / "archive"
+    outbox = data / "outbox"
     a_prefix = str(data / "refs" / "a") + "/"
     b_prefix = str(data / "refs" / "b") + "/"
 
@@ -44,13 +44,13 @@ def commit_session(session_dir: Path, a: Path, b: Path) -> CommitStats:
     log_path = session_dir / "commit.log"
 
     with log_path.open("a") as fh:
-        for dirpath, _dirnames, filenames in os.walk(archive, followlinks=False):
+        for dirpath, _dirnames, filenames in os.walk(outbox, followlinks=False):
             for name in filenames:
                 entry = Path(dirpath) / name
                 if not entry.is_symlink():
                     stats.skipped_file += 1
                     continue
-                _handle_symlink(entry, archive, a, b, a_prefix, b_prefix, stats, fh)
+                _handle_symlink(entry, outbox, a, b, a_prefix, b_prefix, stats, fh)
 
         inbox = data / "inbox"
         for dirpath, _dn, fnames in os.walk(inbox, followlinks=False):
@@ -70,7 +70,7 @@ def commit_session(session_dir: Path, a: Path, b: Path) -> CommitStats:
 
 def _handle_symlink(
     link: Path,
-    archive: Path,
+    outbox: Path,
     a: Path,
     b: Path,
     a_prefix: str,
@@ -79,7 +79,7 @@ def _handle_symlink(
     fh: IO[str],
 ) -> None:
     target = os.readlink(link)
-    rel = link.relative_to(archive)
+    rel = link.relative_to(outbox)
     dst = b / rel
 
     if target.startswith(b_prefix):

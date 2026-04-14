@@ -38,18 +38,18 @@ def test_create_builds_workspace(
     assert (data / "inbox" / "file1.txt").is_symlink()
     assert (data / "inbox" / "sub" / "file2.txt").is_symlink()
 
-    # archive/ mirrors B
-    assert (data / "archive" / "existing" / "old.txt").is_symlink()
+    # outbox/ mirrors B
+    assert (data / "outbox" / "existing" / "old.txt").is_symlink()
 
     # inbox/ symlink target points via data/refs/a/...
     inbox_link = data / "inbox" / "file1.txt"
     target = os.readlink(inbox_link)
     assert target == str(data / "refs" / "a" / "file1.txt")
 
-    # archive/ and subdirs are sticky (mode 1777)
-    d_mode = stat.S_IMODE(os.stat(data / "archive").st_mode)
+    # outbox/ and subdirs are sticky (mode 1777)
+    d_mode = stat.S_IMODE(os.stat(data / "outbox").st_mode)
     assert d_mode == 0o1777
-    sub_mode = stat.S_IMODE(os.stat(data / "archive" / "existing").st_mode)
+    sub_mode = stat.S_IMODE(os.stat(data / "outbox" / "existing").st_mode)
     assert sub_mode == 0o1777
 
     # inbox/ symlinks owned by agent UID after chown handoff

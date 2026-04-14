@@ -119,7 +119,7 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
     rc = docker.run_agent(session_dir, meta.a, meta.b, message=message)
 
     meta.ended_at = _now()
-    done_flag = session_dir / "data" / "archive" / ".done"
+    done_flag = session_dir / "data" / "outbox" / ".done"
     if done_flag.exists():
         meta.status = SessionStatus.done
         meta.exit_reason = "normal"
@@ -188,7 +188,7 @@ def cmd_commit(session_id: str) -> int:
     )
     if stats.inbox_remaining > 0:
         print(
-            f"warning: {stats.inbox_remaining} file(s) in inbox/ were not moved to archive/",
+            f"warning: {stats.inbox_remaining} file(s) in inbox/ were not moved to outbox/",
             file=sys.stderr,
         )
     elif stats.a_remaining > 0:

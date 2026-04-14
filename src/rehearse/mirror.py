@@ -1,4 +1,4 @@
-"""Build the workspace `data/` tree: refs/{a,b} symlinks + inbox/ and archive/ mirrors."""
+"""Build the workspace `data/` tree: refs/{a,b} symlinks + inbox/ and outbox/ mirrors."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def _mirror(
 def build_workspace_data(
     data_dir: Path, a: Path, b: Path
 ) -> None:
-    """Construct `data/` contents: refs/{a,b} symlinks + inbox/ + archive/ mirrors.
+    """Construct `data/` contents: refs/{a,b} symlinks + inbox/ + outbox/ mirrors.
 
     Assumes `data_dir` already exists and is empty.
     """
@@ -59,4 +59,4 @@ def build_workspace_data(
     ref_b = refs_dir / "b"
 
     _mirror(a, data_dir / "inbox", ref_a, C_MODE)
-    _mirror(b, data_dir / "archive", ref_b, D_MODE)
+    _mirror(b, data_dir / "outbox", ref_b, D_MODE)
