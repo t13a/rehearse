@@ -54,17 +54,17 @@ stateDiagram-v2
 
 - `meta.json` に転記済みの profile に既定値を適用し、外部 runner script を起動して終了まで block
 - runner は内部で `docker run --rm` を組み立てて agent コンテナを回す
-- agent (Claude Code) は entrypoint 内で `timeout ${REHEARSE_AGENT_TIMEOUT} claude --print --permission-mode bypassPermissions ...` として起動される
+- agent は entrypoint 内で `timeout ${REHEARSE_AGENT_TIMEOUT} <agent-cli> ...` として起動される。既定は Codex CLI の `codex exec`
 - 終了後、 `meta.json` の状態と `exit_reason` を更新
   - exit 0 + `outbox/.done` あり → `done` (`exit_reason="normal"`)
   - exit 124 / 137 → `failed` (`exit_reason="timeout"`)
   - その他 → `failed` (`exit_reason="exit=N"`)
 
-`--rm` を付けるので container は毎回使い捨て。会話履歴は workspace の `home/agent/.claude/...` (= container の `/home/agent`) に永続化される。 harness ↔ runner 間の env 契約と timeout の扱いは [architecture.md](architecture.md) の「agent runner」節を参照。
+`--rm` を付けるので container は毎回使い捨て。会話履歴や認証情報は workspace の `home/agent/` (= container の `/home/agent`) に永続化される。 harness ↔ runner 間の env 契約と timeout の扱いは [architecture.md](architecture.md) の「agent runner」節を参照。
 
 **再実行** (`done` / `failed` からの再 run):
 
-`done` または `failed` の session に対して `run` を呼ぶと、 entrypoint が会話履歴の存在を検出して Claude Code を `--continue` モードで起動する。 harness 側に「再開」という概念はなく、初回か再開かの判定は entrypoint に閉じている。
+`done` または `failed` の session に対して `run` を呼ぶと、 entrypoint が会話履歴の存在を検出して agent CLI の再開モードを使う。 Codex CLI は `codex exec resume --last`、Claude Code は `--continue` を使う。 harness 側に「再開」という概念はなく、初回か再開かの判定は entrypoint に閉じている。
 
 **追加指示の渡し方** (`-m`):
 
@@ -133,7 +133,7 @@ outbox/music/
 
 ## 規約: transcript
 
-Claude Code は会話ログを `~/.claude/projects/...` に出力する。ハーネスはセッション終了時にこれを workspace の `transcript.jsonl` にコピーする。
+agent の会話ログは home 配下に保存される。ハーネスは必要に応じてこれを workspace の `transcript.jsonl` にコピーできる。
 
 - レビュー時に「なぜその配置にしたか」を遡れる
 - `.FYI.md` とは別次元の情報 (transcript は全行動の記録、 `.FYI.md` は agent 自身が選んだダイジェスト)

@@ -9,8 +9,8 @@ RUN apt-get update \
 
 RUN mkdir -p /opt/rehearse/scripts /opt/rehearse/prompts /home/agent
 
-COPY docker/agent/entrypoint.sh /opt/rehearse/entrypoint.sh
-COPY docker/agent/scripts/ /opt/rehearse/scripts/
+COPY docker/claude-code/entrypoint.sh /opt/rehearse/entrypoint.sh
+COPY docker/claude-code/scripts/ /opt/rehearse/scripts/
 COPY prompts/agent.md /opt/rehearse/prompts/agent.md
 RUN chmod +x /opt/rehearse/entrypoint.sh
 

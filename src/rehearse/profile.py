@@ -7,12 +7,22 @@ import re
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 from rehearse import config
 
 
 PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+AGENT_DEFAULTS = {
+    "codex": (
+        config.DEFAULT_CODEX_AGENT_RUNNER,
+        config.DEFAULT_CODEX_AGENT_IMAGE,
+    ),
+    "claude-code": (
+        config.DEFAULT_CLAUDE_CODE_AGENT_RUNNER,
+        config.DEFAULT_CLAUDE_CODE_AGENT_IMAGE,
+    ),
+}
 
 
 class ProfileError(RuntimeError):
@@ -22,6 +32,7 @@ class ProfileError(RuntimeError):
 class RawProfile(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    agent: str | None = None
     agent_uid: int | None = None
     agent_gid: int | None = None
     agent_image: str | None = None
@@ -32,8 +43,16 @@ class RawProfile(BaseModel):
     agent_extra_args: str | None = None
     skeleton: str | None = None
 
+    @field_validator("agent")
+    @classmethod
+    def validate_agent(cls, value: str | None) -> str | None:
+        if value is not None and value not in AGENT_DEFAULTS:
+            raise ValueError("use 'codex' or 'claude-code'")
+        return value
+
 
 class EffectiveProfile(BaseModel):
+    agent: str
     agent_uid: int
     agent_gid: int
     agent_image: str
@@ -101,9 +120,10 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
     except ValidationError as e:
         raise ProfileError(f"invalid session profile: {e}") from e
 
+    agent = config.DEFAULT_AGENT if profile.agent is None else profile.agent
+    default_runner, default_image = AGENT_DEFAULTS[agent]
     agent_runner = (
-        config.DEFAULT_AGENT_RUNNER
-        if profile.agent_runner is None
+        default_runner if profile.agent_runner is None
         else _resolve_root_relative(profile.agent_runner)
     )
     mcp_config = (
@@ -115,6 +135,7 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
     validate_name(skeleton)
 
     return EffectiveProfile(
+        agent=agent,
         agent_uid=(
             config.DEFAULT_AGENT_UID if profile.agent_uid is None else profile.agent_uid
         ),
@@ -122,9 +143,7 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
             config.DEFAULT_AGENT_GID if profile.agent_gid is None else profile.agent_gid
         ),
         agent_image=(
-            config.DEFAULT_AGENT_IMAGE
-            if profile.agent_image is None
-            else profile.agent_image
+            default_image if profile.agent_image is None else profile.agent_image
         ),
         helper_image=(
             config.DEFAULT_HELPER_IMAGE

@@ -1,7 +1,7 @@
 #!/bin/bash
-# Drop-in replacement for scripts/run-agent-cc.sh used by the test suite.
+# Drop-in replacement for agent runner scripts used by the test suite.
 # Reproduces the Step 2 placeholder behavior with busybox: ls inbox/ and outbox/, then
-# touch outbox/.done. No API key, no rehearse-agent image.
+# touch outbox/.done. No API key, no real agent image.
 set -euo pipefail
 
 : "${REHEARSE_SESSION_DATA:?required}"

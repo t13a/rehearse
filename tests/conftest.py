@@ -43,7 +43,7 @@ def rehearse_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point REHEARSE_ROOT at a temp directory and refresh config.
 
     Also writes a default profile that points to a busybox-backed fake runner
-    so lifecycle tests don't need the real rehearse-agent image or an API key.
+    so lifecycle tests don't need a real agent image or an API key.
     """
     root = tmp_path / "rehearse"
     monkeypatch.setenv("REHEARSE_ROOT", str(root))

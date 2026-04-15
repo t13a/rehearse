@@ -60,8 +60,8 @@ def run_agent(workspace: Path, a: Path, b: Path, profile: EffectiveProfile, *,
               message: str | None = None) -> int:
     """Invoke the external agent runner script.
 
-    The runner is a bash script (`scripts/run-agent-cc.sh` by default) that
-    knows how to launch the underlying agent (Claude Code, OpenCode, ...).
+    The runner is a bash script (`scripts/run-agent-codex.sh` by default) that
+    knows how to launch the underlying agent (Codex CLI, Claude Code, ...).
     The harness only passes parameters via environment variables and observes
     the runner's exit code. Tests set profile.agent_runner to point at a fake
     runner so they don't need a real agent image or API key.

@@ -35,6 +35,64 @@ def test_load_named_profile(
     assert effective.agent_timeout == 30
 
 
+def test_agent_defaults_to_codex(
+    rehearse_root: Path,
+) -> None:
+    effective = profile.effective_profile({})
+
+    assert effective.agent == "codex"
+    assert effective.agent_runner == config.DEFAULT_CODEX_AGENT_RUNNER
+    assert effective.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
+
+    explicit_null = profile.effective_profile({"agent": None})
+    assert explicit_null.agent == "codex"
+    assert explicit_null.agent_runner == config.DEFAULT_CODEX_AGENT_RUNNER
+    assert explicit_null.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
+
+
+def test_codex_agent_selects_codex_defaults(
+    rehearse_root: Path,
+) -> None:
+    effective = profile.effective_profile({"agent": "codex"})
+
+    assert effective.agent == "codex"
+    assert effective.agent_runner == config.DEFAULT_CODEX_AGENT_RUNNER
+    assert effective.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
+
+
+def test_claude_code_agent_selects_claude_defaults(
+    rehearse_root: Path,
+) -> None:
+    effective = profile.effective_profile({"agent": "claude-code"})
+
+    assert effective.agent == "claude-code"
+    assert effective.agent_runner == config.DEFAULT_CLAUDE_CODE_AGENT_RUNNER
+    assert effective.agent_image == config.DEFAULT_CLAUDE_CODE_AGENT_IMAGE
+
+
+def test_agent_runner_and_image_override_agent_defaults(
+    rehearse_root: Path,
+) -> None:
+    effective = profile.effective_profile(
+        {
+            "agent": "claude-code",
+            "agent_runner": "bin/codex-wrapper.sh",
+            "agent_image": "custom-codex:latest",
+        }
+    )
+
+    assert effective.agent == "claude-code"
+    assert effective.agent_runner == rehearse_root / "bin" / "codex-wrapper.sh"
+    assert effective.agent_image == "custom-codex:latest"
+
+
+def test_invalid_agent_errors(
+    rehearse_root: Path,
+) -> None:
+    with pytest.raises(profile.ProfileError, match="use 'codex' or 'claude-code'"):
+        profile.effective_profile({"agent": "bad-agent"})
+
+
 def test_missing_non_default_profile_errors(
     rehearse_root: Path,
 ) -> None:
