@@ -30,6 +30,7 @@ class RawProfile(BaseModel):
     agent_timeout: int | None = None
     mcp_config: Path | None = None
     agent_extra_args: str | None = None
+    skeleton: str | None = None
 
 
 class EffectiveProfile(BaseModel):
@@ -41,6 +42,7 @@ class EffectiveProfile(BaseModel):
     agent_timeout: int
     mcp_config: Path | None
     agent_extra_args: str | None
+    skeleton: str
 
 
 def validate_name(name: str) -> None:
@@ -109,6 +111,8 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
         if profile.mcp_config is None
         else _resolve_root_relative(profile.mcp_config)
     )
+    skeleton = "default" if profile.skeleton is None else profile.skeleton
+    validate_name(skeleton)
 
     return EffectiveProfile(
         agent_uid=(
@@ -135,4 +139,5 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
         ),
         mcp_config=mcp_config,
         agent_extra_args=profile.agent_extra_args,
+        skeleton=skeleton,
     )

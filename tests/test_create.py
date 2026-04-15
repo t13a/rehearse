@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -90,6 +91,80 @@ def test_create_uses_named_profile(
     assert meta.profile == {"agent_image": "busybox:latest", "agent_timeout": 42}
 
 
+def test_create_copies_named_skeleton(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    skel = config.SKELETONS_DIR / "codex"
+    (skel / ".codex").mkdir(parents=True)
+    (skel / ".codex" / "auth.json").write_text('{"token": "secret"}\n')
+    (skel / ".codex" / "config.toml").write_text("model = 'gpt-5.4'\n")
+    (skel / "auth-link").symlink_to(".codex/auth.json")
+
+    custom = config.PROFILES_DIR / "codex.json"
+    custom.write_text('{"skeleton": "codex"}\n')
+
+    assert commands.cmd_create(str(a), str(b), profile_name="codex") == 0
+
+    session_id = capsys.readouterr().out.strip()
+    session_dir = config.SESSIONS_DIR / session_id
+    agent_home = session_dir / "home" / "agent"
+
+    assert (agent_home / ".codex" / "auth.json").read_text() == '{"token": "secret"}\n'
+    assert (agent_home / ".codex" / "config.toml").exists()
+    assert (agent_home / "auth-link").is_symlink()
+    assert os.readlink(agent_home / "auth-link") == ".codex/auth.json"
+
+    copied_stat = os.lstat(agent_home / ".codex" / "auth.json")
+    assert copied_stat.st_uid == config.DEFAULT_AGENT_UID
+    assert copied_stat.st_gid == config.DEFAULT_AGENT_GID
+
+    meta = read_meta(session_dir)
+    assert meta.profile == {"skeleton": "codex"}
+
+    tracked = subprocess.run(
+        ["git", "-C", str(session_dir), "ls-files"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert "home/agent/.codex/auth.json" not in tracked
+
+    (skel / ".codex" / "auth.json").write_text('{"token": "changed-source"}\n')
+    assert (agent_home / ".codex" / "auth.json").read_text() == '{"token": "secret"}\n'
+    subprocess.run(
+        [
+            "docker", "run", "--rm",
+            "--user", f"{config.DEFAULT_AGENT_UID}:{config.DEFAULT_AGENT_GID}",
+            "-v", f"{agent_home}:{agent_home}:rw",
+            "busybox:latest",
+            "sh", "-c",
+            f"printf '%s\\n' '{{\"token\": \"changed-session\"}}' > {agent_home / '.codex' / 'auth.json'}",
+        ],
+        check=True,
+    )
+    assert (skel / ".codex" / "auth.json").read_text() == '{"token": "changed-source"}\n'
+
+
+def test_create_auto_creates_default_skeleton(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    default = config.SKELETONS_DIR / "default"
+    assert not default.exists()
+
+    assert commands.cmd_create(str(a), str(b)) == 0
+
+    capsys.readouterr()
+    assert default.is_dir()
+
+
 def test_create_rejects_missing_profile(
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
@@ -101,3 +176,18 @@ def test_create_rejects_missing_profile(
 
     assert rc == 2
     assert "profile not found" in capsys.readouterr().err
+
+
+def test_create_rejects_missing_skeleton(
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    custom = config.PROFILES_DIR / "missing-skeleton.json"
+    custom.write_text('{"skeleton": "ghost"}\n')
+
+    rc = commands.cmd_create(str(a), str(b), profile_name="missing-skeleton")
+
+    assert rc == 2
+    assert "skeleton not found" in capsys.readouterr().err

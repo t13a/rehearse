@@ -117,11 +117,14 @@ docker run --rm \
 Claude Code は `~/.claude/projects/...` に会話履歴を吐く。これがコンテナ揮発領域にあると `--rm` で消えてしまうので、 agent の HOME を **workspace 内に永続化**する:
 
 - `rehearse create` がセッションごとに `workspace/home/agent/` を掘り、 `inbox/` と一緒に agent UID へ chown ハンドオフする
+- profile の `skeleton` で指定された `$REHEARSE_ROOT/skeletons/<name>/` を `workspace/home/agent/` にコピーする。未指定時は `default`。 `skeletons/default/` は空ディレクトリとして自動作成される
 - runner script はこれを `/home/agent` に rw で bind mount し、 `HOME=/home/agent` を `-e` で渡す
 - FHS に沿った `/home/agent` を選んだのは、 Claude Code が前提とする「ホームディレクトリらしい場所」と整合させるため
 - ホスト側のパスが `workspace/home/agent` なのは workspace レイアウトの対称性を取るため
 
-`purge` で workspace を消すと agent home も一緒に消える。短期セッションでは履歴を後から振り返れるし、長期では `purge` 一発で掃除できる。
+コピーは symlink を symlink のまま保つ。 skeleton は雛形で、 session home は独立したコピーなので、 agent が `.codex/auth.json` などを更新しても skeleton 側には書き戻さない。 `discard` は workspace を残すため copied secret も残る。 `purge` で workspace を消すと agent home も一緒に消える。短期セッションでは履歴を後から振り返れるし、長期では `purge` 一発で掃除できる。
+
+セッション開始時の git snapshot は `data/` だけを追跡するので、 `home/agent/.codex/auth.json` のような home 配下のファイルは session git repo に入らない。
 
 ## agent runner: harness と agent の境界
 

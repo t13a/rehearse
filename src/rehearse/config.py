@@ -26,12 +26,13 @@ DEFAULT_AGENT_RUNNER: Path = _REPO_ROOT / "scripts" / "run-agent-cc.sh"
 SESSIONS_DIR: Path = REHEARSE_ROOT / "sessions"
 LOCKS_DIR: Path = REHEARSE_ROOT / "locks"
 PROFILES_DIR: Path = REHEARSE_ROOT / "profiles"
+SKELETONS_DIR: Path = REHEARSE_ROOT / "skeletons"
 
 
 def reload() -> None:
     """Re-read environment variables into module attributes."""
 
-    global REHEARSE_ROOT, SESSIONS_DIR, LOCKS_DIR, PROFILES_DIR
+    global REHEARSE_ROOT, SESSIONS_DIR, LOCKS_DIR, PROFILES_DIR, SKELETONS_DIR
 
     REHEARSE_ROOT = _env_path(
         "REHEARSE_ROOT", Path.home() / ".local" / "share" / "rehearse"
@@ -39,3 +40,4 @@ def reload() -> None:
     SESSIONS_DIR = REHEARSE_ROOT / "sessions"
     LOCKS_DIR = REHEARSE_ROOT / "locks"
     PROFILES_DIR = REHEARSE_ROOT / "profiles"
+    SKELETONS_DIR = REHEARSE_ROOT / "skeletons"

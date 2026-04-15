@@ -79,3 +79,17 @@ def test_relative_paths_resolve_from_rehearse_root(
 
     assert effective.agent_runner == rehearse_root / "bin" / "runner.sh"
     assert effective.mcp_config == rehearse_root / "mcp" / "config.json"
+
+
+def test_skeleton_defaults_to_default(
+    rehearse_root: Path,
+) -> None:
+    assert profile.effective_profile({}).skeleton == "default"
+    assert profile.effective_profile({"skeleton": None}).skeleton == "default"
+
+
+def test_invalid_skeleton_name_errors(
+    rehearse_root: Path,
+) -> None:
+    with pytest.raises(profile.ProfileError, match="invalid profile name"):
+        profile.effective_profile({"skeleton": "../bad"})

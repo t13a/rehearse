@@ -7,7 +7,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from rehearse import commit, docker, mirror, profile as profile_mod, validate, workspace
+from rehearse import commit, docker, mirror, profile as profile_mod, skeleton, validate, workspace
 from rehearse.meta import SessionMeta, SessionStatus, read_meta, write_meta
 
 
@@ -35,6 +35,7 @@ def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
     try:
         raw_profile = profile_mod.load_profile_for_create(profile_name)
         effective_profile = profile_mod.effective_profile(raw_profile)
+        skeleton.resolve_skeleton(effective_profile.skeleton)
     except profile_mod.ProfileError as e:
         print(f"profile failed: {e}", file=sys.stderr)
         return 2
@@ -56,6 +57,11 @@ def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
 
     agent_home = session_dir / "home" / "agent"
     agent_home.mkdir(parents=True)
+    try:
+        skeleton.copy_skeleton(effective_profile.skeleton, agent_home)
+    except profile_mod.ProfileError as e:
+        print(f"profile failed: {e}", file=sys.stderr)
+        return 2
 
     docker.chown_container([data_dir / "inbox", agent_home], effective_profile)
 
@@ -227,4 +233,3 @@ def cmd_exec(session_id: str, argv: list[str]) -> int:
     session_dir = _resolve_session_dir(session_id)
     data_dir = session_dir / "data"
     return subprocess.run(argv, cwd=data_dir).returncode
-

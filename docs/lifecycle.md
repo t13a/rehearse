@@ -45,6 +45,7 @@ stateDiagram-v2
 - 新しい workspace を作成
 - `$REHEARSE_ROOT/profiles/<profile>.json` を読み込み、 raw profile を `meta.json` に転記
 - `-p` 未指定時は `default`。 `profiles/default.json` がなければ `{}` で自動作成
+- profile の `skeleton` で指定された `$REHEARSE_ROOT/skeletons/<name>/` を `home/agent/` にコピー。未指定時は `default`。 `skeletons/default/` がなければ空ディレクトリで自動作成
 - `data/` 配下に `refs/{a,b}` symlink、`inbox/`, `outbox/` を構築
 - `meta.json` を書き出し
 - `.gitignore` を書き、 `data/` の初期状態を git にスナップショット (レビュー用、詳細は [architecture.md](architecture.md) の「セッション開始時フック」節)
