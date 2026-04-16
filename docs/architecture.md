@@ -196,13 +196,7 @@ Codex image (`docker/codex/Dockerfile`) と Claude Code image (`docker/claude/Do
 
 `ls` / `find` / `stat` は既定の挙動 (symlink 自身を見る) のままで構わない。 agent にとっては target の文字列そのものがプロビナンス情報になるので、 symlink を follow させるよりそのまま見せる方が有益。
 
-### `/opt/rehearse/scripts/` (image 内のローカルツール置き場)
-
-Dockerfile は `/opt/rehearse/scripts/` を `PATH` の先頭に入れている。ここにシェルスクリプトを置けば、 agent の `Bash` ツールから名前で呼べる:
-
-- 想定する用途は「 image にあらかじめ詰めておきたい小さなヘルパー」 (例: `tree` の出力を整形するラッパー、 audio ファイルのメタデータを抽出する一発スクリプト等)
-- ホスト側のソースは agent image ごとの `docker/<agent>/scripts/` に置き、 image build 時に `COPY` で持ち込む
-- 「ローカル MCP サーバー」相当のことをしたい場合は、ここに stdio MCP の実装を置き、 skeleton に含める agent-native config から参照する。 Step 3 の段階ではディレクトリだけ用意してあり、中身は空 (`.gitkeep` のみ)
+agent ごとの小さなヘルパーや provider 固有の環境変数は image に焼き込まず、 skeleton の home 配下に置く。必要なら `.rehearse/agent/init.sh` で `PATH` を調整し、 `~/bin` などを agent CLI 起動前に使える状態にする。
 
 ## Isolation まわり
 
