@@ -3,9 +3,13 @@ FROM node:20-slim
 # coreutils ships with the base image (timeout, ls, stat, ...). Add the
 # missing pieces of the rehearse toolbox: find/xargs and tree.
 RUN apt-get update \
- && apt-get install --no-install-recommends -y findutils tree \
+ && apt-get install --no-install-recommends -y ca-certificates curl findutils tree \
  && rm -rf /var/lib/apt/lists/* \
- && npm install -g @anthropic-ai/claude-code
+ && curl -fsSL https://claude.ai/install.sh | bash \
+ && mkdir -p /usr/local/share/claude \
+ && mv /root/.local/share/claude/versions /usr/local/share/claude/versions \
+ && ln -s /usr/local/share/claude/versions/* /usr/local/bin/claude \
+ && rm -rf /root/.claude /root/.local
 
 RUN mkdir -p /opt/rehearse/prompts /home/agent
 
