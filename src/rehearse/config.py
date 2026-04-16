@@ -25,6 +25,7 @@ DEFAULT_AGENT_IMAGE: str = DEFAULT_CODEX_AGENT_IMAGE
 DEFAULT_HELPER_IMAGE: str = "busybox:latest"
 DEFAULT_AGENT_TIMEOUT: int = 3600
 DEFAULT_AGENT_RUNNER: Path = _REPO_ROOT / "scripts" / "docker-runner.sh"
+DEFAULT_DOCKER_HELPER: Path = _REPO_ROOT / "scripts" / "docker-helper.sh"
 
 SESSIONS_DIR: Path = REHEARSE_ROOT / "sessions"
 LOCKS_DIR: Path = REHEARSE_ROOT / "locks"

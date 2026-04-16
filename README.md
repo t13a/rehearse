@@ -114,7 +114,7 @@ profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile
 | `agent_uid` | `10000` | agent コンテナを走らせる UID |
 | `agent_gid` | `10000` | 同 GID |
 | `agent_image` | `rehearse-agent-codex:latest` | agent コンテナの image。 `agent` の標準値を上書きする |
-| `helper_image` | `busybox:latest` | chown / cleanup 用の root コンテナ image |
+| `helper_image` | `busybox:latest` | `scripts/docker-helper.sh` が chown / cleanup に使う root コンテナ image |
 | `agent_runner` | `<repo>/scripts/docker-runner.sh` | agent image を起動する runner。 Podman 等に差し替える場合に上書きする |
 | `agent_timeout` | `3600` | container 内で `timeout` が agent CLI に与える秒数 |
 | `agent_extra_args` | `null` | agent CLI に渡す追加引数 (スペース区切り) |
@@ -200,7 +200,7 @@ agent コンテナが UID 10000 で動くため、 `inbox/` の symlink や agen
 uv run rehearse purge <session_id>
 ```
 
-を経由すること。内部で root コンテナを 1 発叩いて `rm -rf` する。
+を経由すること。内部で `scripts/docker-helper.sh` 経由の root コンテナを 1 発叩いて `rm -rf` する。
 
 手動で `~/.local/share/rehearse/sessions/` を掃除したくなったら、同じ理屈で:
 

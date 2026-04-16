@@ -72,7 +72,7 @@ workspace/data/outbox/**/*   owner: harness              → B-mirror の symlin
 - 一方で write 権限は開けてあるので、 agent は B-mirror 内に**新しい**エントリを追加できる (sticky は既存エントリにしか効かない)
 - agent が作った subdir や移動してきた symlink は agent 所有・非 sticky なので、自分の配下では自由に reorg できる
 
-**所有権ハンドオフ**: sticky bit enforcement は「所有者である限り動かせる」という対称側も持つ。 agent が `inbox/` から `outbox/` に運んできた symlink を後から**別の場所に動かし直す** (do-over) ためには、 agent 自身がその symlink の owner である必要がある。そこで `create` の末尾で短命の root コンテナを 1 つ叩いて `chown -Rh <agent_uid>:<agent_gid> inbox/` を実行し、 `inbox/` 配下の symlink をすべて agent UID にハンドオフする。 `rename(2)` は owner を保存するので、 `mv inbox/foo.flac outbox/music/...` としても owner は agent のままで、あとから `mv` で別の場所に動かし直せる。
+**所有権ハンドオフ**: sticky bit enforcement は「所有者である限り動かせる」という対称側も持つ。 agent が `inbox/` から `outbox/` に運んできた symlink を後から**別の場所に動かし直す** (do-over) ためには、 agent 自身がその symlink の owner である必要がある。そこで `create` の末尾で `scripts/docker-helper.sh` 経由の短命な root コンテナを 1 つ叩いて `chown -Rh <agent_uid>:<agent_gid> inbox/` を実行し、 `inbox/` 配下の symlink をすべて agent UID にハンドオフする。 `rename(2)` は owner を保存するので、 `mv inbox/foo.flac outbox/music/...` としても owner は agent のままで、あとから `mv` で別の場所に動かし直せる。
 
 この結果、 agent が「動かしていいのは自分で持ち込んだ symlink だけ」という不変条件が機構的に保証され、 agent 側に target prefix を見て判断させる必要がなくなる。また、配置の do-over も何度でもできる。
 
@@ -128,7 +128,9 @@ Codex CLI や Claude Code は home 配下に認証情報、設定、会話履歴
 
 ## agent runner: harness と agent の境界
 
-`docker run` の組み立ては **bash スクリプト (`scripts/docker-runner.sh`) に外出し**してある。 Python (`docker.run_agent`) はもはや docker コマンドを知らず、 runner を `subprocess.run` で起動して exit code を受け取るだけの薄い wrapper になっている。
+`docker run` の組み立ては **bash スクリプト (`scripts/docker-runner.sh`) に外出し**してある。 Python (`docker.run_agent`) はもはや agent コンテナの docker コマンドを知らず、 runner を `subprocess.run` で起動して exit code を受け取るだけの薄い wrapper になっている。
+
+同じ方針で、 root 権限が必要な `chown` / `cleanup` は `scripts/docker-helper.sh` に外出ししている。 Python は helper image、広めに mount する親ディレクトリ、実行したいコマンドだけを渡す。Docker 以外へ寄せる場合は runner と helper の 2 箇所が runtime 境界になる。
 
 理由は二つ:
 

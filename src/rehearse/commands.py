@@ -77,7 +77,11 @@ def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
         print(f"profile failed: {e}", file=sys.stderr)
         return 2
 
-    docker.chown_container([data_dir / "inbox", agent_home], effective_profile)
+    docker.chown_container(
+        session_dir,
+        [data_dir / "inbox", agent_home],
+        effective_profile,
+    )
 
     subprocess.run(
         ["bash", str(GIT_SNAPSHOT_SCRIPT), str(session_dir)],

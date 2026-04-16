@@ -24,6 +24,17 @@ def _make_dump_runner(tmp_path: Path, dump_path: Path) -> Path:
     return runner
 
 
+def _make_dump_helper(tmp_path: Path, dump_path: Path) -> Path:
+    helper = tmp_path / "dump-helper.sh"
+    helper.write_text(
+        "#!/bin/bash\n"
+        f"env > {dump_path}.env\n"
+        f"printf '%s\\n' \"$@\" > {dump_path}.argv\n"
+    )
+    helper.chmod(helper.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return helper
+
+
 def _parse_env(dump_path: Path) -> dict[str, str]:
     out: dict[str, str] = {}
     for line in dump_path.read_text().splitlines():
@@ -181,3 +192,51 @@ def test_run_agent_propagates_exit_code(
     assert rc == 7
 
     config.reload()
+
+
+def test_chown_container_invokes_docker_helper(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dump = tmp_path / "helper.dump"
+    helper = _make_dump_helper(tmp_path, dump)
+    monkeypatch.setattr(config, "DEFAULT_DOCKER_HELPER", helper)
+
+    profile = effective_profile({"helper_image": "busybox:test"})
+    workspace = tmp_path / "sessions" / "123"
+    inbox = workspace / "data" / "inbox"
+    home = workspace / "home" / "agent"
+
+    docker.chown_container(workspace, [inbox, home], profile)
+
+    env = _parse_env(Path(f"{dump}.env"))
+    argv = Path(f"{dump}.argv").read_text().splitlines()
+    assert env["REHEARSE_HELPER_IMAGE"] == "busybox:test"
+    assert env["REHEARSE_HELPER_MOUNT"] == str(workspace.parent)
+    assert argv == [
+        "chown",
+        "-Rh",
+        f"{config.DEFAULT_AGENT_UID}:{config.DEFAULT_AGENT_GID}",
+        str(inbox),
+        str(home),
+    ]
+
+
+def test_cleanup_container_invokes_docker_helper(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dump = tmp_path / "helper.dump"
+    helper = _make_dump_helper(tmp_path, dump)
+    monkeypatch.setattr(config, "DEFAULT_DOCKER_HELPER", helper)
+
+    profile = effective_profile({"helper_image": "busybox:test"})
+    workspace = tmp_path / "sessions" / "123"
+
+    docker.cleanup_container(workspace, profile)
+
+    env = _parse_env(Path(f"{dump}.env"))
+    argv = Path(f"{dump}.argv").read_text().splitlines()
+    assert env["REHEARSE_HELPER_IMAGE"] == "busybox:test"
+    assert env["REHEARSE_HELPER_MOUNT"] == str(workspace.parent)
+    assert argv == ["rm", "-rf", str(workspace)]
