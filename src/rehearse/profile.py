@@ -15,7 +15,7 @@ from rehearse import config
 PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 AGENT_DEFAULTS = {
     "codex": config.DEFAULT_CODEX_AGENT_IMAGE,
-    "claude-code": config.DEFAULT_CLAUDE_CODE_AGENT_IMAGE,
+    "claude": config.DEFAULT_CLAUDE_AGENT_IMAGE,
 }
 
 
@@ -40,7 +40,7 @@ class RawProfile(BaseModel):
     @classmethod
     def validate_agent(cls, value: str | None) -> str | None:
         if value is not None and value not in AGENT_DEFAULTS:
-            raise ValueError("use 'codex' or 'claude-code'")
+            raise ValueError("use 'codex' or 'claude'")
         return value
 
 

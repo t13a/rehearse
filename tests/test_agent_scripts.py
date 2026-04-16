@@ -150,7 +150,7 @@ def test_docker_runner_does_not_require_host_anthropic_key(
             "REHEARSE_SESSION_RUN_LOCK": str(tmp_path / "ws" / "run.lock"),
             "REHEARSE_SESSION_A": str(tmp_path / "A"),
             "REHEARSE_SESSION_B": str(tmp_path / "B"),
-            "REHEARSE_AGENT_IMAGE": "rehearse-agent-cc:latest",
+            "REHEARSE_AGENT_IMAGE": "rehearse-agent-claude:latest",
             "REHEARSE_AGENT_UID": "10000",
             "REHEARSE_AGENT_GID": "10000",
             "REHEARSE_AGENT_TIMEOUT": "3600",
@@ -170,7 +170,7 @@ def test_docker_runner_does_not_require_host_anthropic_key(
     assert "ANTHROPIC_API_KEY=sk-test" not in argv
     assert "REHEARSE_MCP_CONFIG_PATH=/opt/rehearse/mcp.json" not in argv
     assert f"{mcp}:/opt/rehearse/mcp.json:ro" not in argv
-    assert argv[-1] == "rehearse-agent-cc:latest"
+    assert argv[-1] == "rehearse-agent-claude:latest"
 
 
 def test_agent_runners_fail_when_session_lock_is_held(
@@ -436,7 +436,7 @@ def test_claude_entrypoint_sources_agent_init_before_key_check(
     )
 
     result = subprocess.run(
-        [str(REPO_ROOT / "docker" / "claude-code" / "entrypoint.sh")],
+        [str(REPO_ROOT / "docker" / "claude" / "entrypoint.sh")],
         env=env,
         capture_output=True,
         text=True,

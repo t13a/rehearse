@@ -60,14 +60,14 @@ def test_codex_agent_selects_codex_defaults(
     assert effective.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
 
 
-def test_claude_code_agent_selects_claude_defaults(
+def test_claude_agent_selects_claude_defaults(
     rehearse_root: Path,
 ) -> None:
-    effective = profile.effective_profile({"agent": "claude-code"})
+    effective = profile.effective_profile({"agent": "claude"})
 
-    assert effective.agent == "claude-code"
+    assert effective.agent == "claude"
     assert effective.agent_runner == config.DEFAULT_AGENT_RUNNER
-    assert effective.agent_image == config.DEFAULT_CLAUDE_CODE_AGENT_IMAGE
+    assert effective.agent_image == config.DEFAULT_CLAUDE_AGENT_IMAGE
 
 
 def test_agent_runner_and_image_override_agent_defaults(
@@ -75,13 +75,13 @@ def test_agent_runner_and_image_override_agent_defaults(
 ) -> None:
     effective = profile.effective_profile(
         {
-            "agent": "claude-code",
+            "agent": "claude",
             "agent_runner": "bin/codex-wrapper.sh",
             "agent_image": "custom-codex:latest",
         }
     )
 
-    assert effective.agent == "claude-code"
+    assert effective.agent == "claude"
     assert effective.agent_runner == rehearse_root / "bin" / "codex-wrapper.sh"
     assert effective.agent_image == "custom-codex:latest"
 
@@ -89,7 +89,7 @@ def test_agent_runner_and_image_override_agent_defaults(
 def test_invalid_agent_errors(
     rehearse_root: Path,
 ) -> None:
-    with pytest.raises(profile.ProfileError, match="use 'codex' or 'claude-code'"):
+    with pytest.raises(profile.ProfileError, match="use 'codex' or 'claude'"):
         profile.effective_profile({"agent": "bad-agent"})
 
 

@@ -171,7 +171,7 @@ runner が組み立てる image の entrypoint は `timeout --kill-after=10 ${RE
 
 ## ツールボックス (コンテナ内)
 
-Codex image (`docker/codex/Dockerfile`) と Claude Code image (`docker/claude-code/Dockerfile`) は `node:20-slim` をベースにしている。どちらも npm パッケージとして CLI を入れ、 base image に標準で入っている coreutils と、 apt で足した `findutils` / `tree` で agent の道具箱になる。Codex image には HTTPS/WSS 接続用の `ca-certificates` も入れる。Codex 自体の sandbox は `danger-full-access` にして、Docker の bind mount と agent UID を containment boundary とする。
+Codex image (`docker/codex/Dockerfile`) と Claude Code image (`docker/claude/Dockerfile`) は `node:20-slim` をベースにしている。どちらも npm パッケージとして CLI を入れ、 base image に標準で入っている coreutils と、 apt で足した `findutils` / `tree` で agent の道具箱になる。Codex image には HTTPS/WSS 接続用の `ca-certificates` も入れる。Codex 自体の sandbox は `danger-full-access` にして、Docker の bind mount と agent UID を containment boundary とする。
 
 **許可** (image に存在する):
 
