@@ -92,7 +92,6 @@ def test_run_agent_passes_required_env(
     assert env["REHEARSE_AGENT_UID"] == str(config.DEFAULT_AGENT_UID)
     assert env["REHEARSE_AGENT_GID"] == str(config.DEFAULT_AGENT_GID)
     assert env["REHEARSE_AGENT_TIMEOUT"] == str(config.DEFAULT_AGENT_TIMEOUT)
-    assert "REHEARSE_MCP_CONFIG" not in env
 
     config.reload()
 

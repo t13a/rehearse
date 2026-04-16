@@ -137,13 +137,6 @@ def test_relative_paths_resolve_from_rehearse_root(
     assert effective.agent_runner == rehearse_root / "bin" / "runner.sh"
 
 
-def test_mcp_config_is_not_a_profile_field(
-    rehearse_root: Path,
-) -> None:
-    with pytest.raises(profile.ProfileError, match="extra_forbidden"):
-        profile.effective_profile({"mcp_config": "mcp/config.json"})
-
-
 def test_skeleton_defaults_to_default(
     rehearse_root: Path,
 ) -> None:

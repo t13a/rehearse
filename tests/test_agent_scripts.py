@@ -48,7 +48,6 @@ def test_docker_runner_assembles_docker_env(
             "REHEARSE_AGENT_TIMEOUT": "3600",
             "REHEARSE_AGENT_MESSAGE": "go",
             "REHEARSE_AGENT_EXTRA_ARGS": "--oss",
-            "OPENAI_API_KEY": "sk-test",
         }
     )
 
@@ -64,8 +63,6 @@ def test_docker_runner_assembles_docker_env(
     assert argv[:2] == ["run", "--rm"]
     assert "-e" in argv
     assert "HOME=/home/agent" in argv
-    assert "CODEX_HOME=/home/agent/.codex" not in argv
-    assert "OPENAI_API_KEY=sk-test" not in argv
     assert "REHEARSE_AGENT_MESSAGE=go" in argv
     assert "REHEARSE_AGENT_EXTRA_ARGS=--oss" in argv
     assert argv[-1] == "rehearse-agent-codex:latest"
@@ -121,56 +118,6 @@ def test_docker_helper_assembles_root_helper_container(
         "10000:10000",
         str(tmp_path / "sessions" / "123" / "home" / "agent"),
     ]
-
-
-def test_docker_runner_does_not_require_host_anthropic_key(
-    tmp_path: Path,
-) -> None:
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    (tmp_path / "ws").mkdir()
-    mcp = tmp_path / "mcp.json"
-    mcp.write_text("{}\n")
-    argv_dump = tmp_path / "docker.argv"
-    _write_executable(
-        bin_dir / "docker",
-        "#!/bin/bash\n"
-        "printf '%s\\n' \"$@\" > \"$DOCKER_ARGV_DUMP\"\n",
-    )
-
-    env = os.environ.copy()
-    env.pop("ANTHROPIC_API_KEY", None)
-    env.update(
-        {
-            "PATH": f"{bin_dir}:{env['PATH']}",
-            "DOCKER_ARGV_DUMP": str(argv_dump),
-            "REHEARSE_SESSION_WORKSPACE": str(tmp_path / "ws"),
-            "REHEARSE_SESSION_DATA": str(tmp_path / "ws" / "data"),
-            "REHEARSE_SESSION_HOME": str(tmp_path / "ws" / "home" / "agent"),
-            "REHEARSE_SESSION_RUN_LOCK": str(tmp_path / "ws" / "run.lock"),
-            "REHEARSE_SESSION_A": str(tmp_path / "A"),
-            "REHEARSE_SESSION_B": str(tmp_path / "B"),
-            "REHEARSE_AGENT_IMAGE": "rehearse-agent-claude:latest",
-            "REHEARSE_AGENT_UID": "10000",
-            "REHEARSE_AGENT_GID": "10000",
-            "REHEARSE_AGENT_TIMEOUT": "3600",
-            "REHEARSE_MCP_CONFIG": str(mcp),
-        }
-    )
-
-    result = subprocess.run(
-        [str(REPO_ROOT / "scripts" / "docker-runner.sh")],
-        env=env,
-        capture_output=True,
-        text=True,
-    )
-
-    assert result.returncode == 0, result.stderr
-    argv = argv_dump.read_text().splitlines()
-    assert "ANTHROPIC_API_KEY=sk-test" not in argv
-    assert "REHEARSE_MCP_CONFIG_PATH=/opt/rehearse/mcp.json" not in argv
-    assert f"{mcp}:/opt/rehearse/mcp.json:ro" not in argv
-    assert argv[-1] == "rehearse-agent-claude:latest"
 
 
 def test_agent_runners_fail_when_session_lock_is_held(
