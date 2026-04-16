@@ -2,9 +2,9 @@
 # rehearse agent runner for Claude Code.
 #
 # Contract: the harness exports REHEARSE_SESSION_* / REHEARSE_AGENT_* /
-# REHEARSE_MCP_CONFIG / ANTHROPIC_API_KEY into the environment, then exec's
-# this script. The script assembles the docker invocation and lets the
-# container's exit code propagate as its own.
+# REHEARSE_MCP_CONFIG into the environment, then exec's this script. The
+# script assembles the docker invocation and lets the container's exit code
+# propagate as its own.
 #
 # Swap this out via profile agent_runner if you want a different agent
 # (OpenCode, a local LLM, a fake runner for tests, ...).
@@ -19,7 +19,6 @@ set -euo pipefail
 : "${REHEARSE_AGENT_UID:?required}"
 : "${REHEARSE_AGENT_GID:?required}"
 : "${REHEARSE_AGENT_TIMEOUT:?required}"
-: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set in the host environment}"
 
 args=(
   docker run --rm
@@ -30,7 +29,6 @@ args=(
   -v "${REHEARSE_SESSION_B}:${REHEARSE_SESSION_B}:ro"
   -w "${REHEARSE_SESSION_DATA}"
   -e "HOME=/home/agent"
-  -e "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}"
   -e "REHEARSE_WORKSPACE_DATA=${REHEARSE_SESSION_DATA}"
   -e "REHEARSE_AGENT_TIMEOUT=${REHEARSE_AGENT_TIMEOUT}"
 )

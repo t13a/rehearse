@@ -5,6 +5,12 @@
 # parameters from the environment, then runs `codex exec` under `timeout`.
 set -euo pipefail
 
+agent_init="$HOME/.rehearse/agent/init.sh"
+if [ -f "${agent_init}" ]; then
+  # shellcheck source=/dev/null
+  . "${agent_init}"
+fi
+
 cd "${REHEARSE_WORKSPACE_DATA:-/workspace/data}"
 
 global_args=(

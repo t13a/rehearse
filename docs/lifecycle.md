@@ -60,7 +60,7 @@ stateDiagram-v2
   - exit 124 / 137 → `failed` (`exit_reason="timeout"`)
   - その他 → `failed` (`exit_reason="exit=N"`)
 
-`--rm` を付けるので container は毎回使い捨て。会話履歴や認証情報は workspace の `home/agent/` (= container の `/home/agent`) に永続化される。 harness ↔ runner 間の env 契約と timeout の扱いは [architecture.md](architecture.md) の「agent runner」節を参照。
+`--rm` を付けるので container は毎回使い捨て。会話履歴や認証情報は workspace の `home/agent/` (= container の `/home/agent`) に永続化される。`home/agent/.rehearse/agent/init.sh` があれば、 entrypoint は agent CLI 起動前にこれを source する。 harness ↔ runner 間の env 契約と timeout の扱いは [architecture.md](architecture.md) の「agent runner」節を参照。
 
 **再実行** (`done` / `failed` からの再 run):
 

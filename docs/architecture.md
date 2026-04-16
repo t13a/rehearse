@@ -150,12 +150,12 @@ harness は以下の環境変数を runner にエクスポートする:
 | `REHEARSE_AGENT_UID` / `REHEARSE_AGENT_GID` | container user |
 | `REHEARSE_AGENT_TIMEOUT` | container 内で `timeout` が agent CLI に与える秒数 |
 | `REHEARSE_MCP_CONFIG` | MCP 設定 JSON の host path (optional) |
-| `OPENAI_API_KEY` | 親プロセスから継承 (Codex runner では設定されている場合のみ pass-through) |
-| `ANTHROPIC_API_KEY` | 親プロセスから継承 (Claude Code runner では必須) |
 
 runner は上記だけを使って `docker run` を組み立て、 container の exit code を自分の exit code としてそのまま返す。 harness はその数字だけを観察する。
 
 これらの `REHEARSE_AGENT_*` は harness と runner の内部契約であり、ユーザー向け設定ではない。ユーザーは `$REHEARSE_ROOT/profiles/<name>.json` に `agent` / `agent_image` / `agent_uid` / `agent_timeout` / `mcp_config` などを書き、 `rehearse create -p <name> ...` で session に転記する。
+
+provider API key のような agent process 用の環境変数は runner から pass-through しない。 skeleton に `.rehearse/agent/init.sh` を置くと、 entrypoint が agent CLI 起動前に source する。これにより `.codex/config.toml` と `OPENROUTER_API_KEY` のような provider 固有設定を同じ skeleton に閉じ込められる。`init.sh` は通常の shell script なので、agent process に渡したい値は `export` する。
 
 ### timeout の扱い
 

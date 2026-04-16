@@ -62,10 +62,53 @@ def test_codex_runner_assembles_docker_env(
     assert "-e" in argv
     assert "HOME=/home/agent" in argv
     assert "CODEX_HOME=/home/agent/.codex" in argv
-    assert "OPENAI_API_KEY=sk-test" in argv
+    assert "OPENAI_API_KEY=sk-test" not in argv
     assert "REHEARSE_AGENT_MESSAGE=go" in argv
     assert "REHEARSE_AGENT_EXTRA_ARGS=--oss" in argv
     assert argv[-1] == "rehearse-agent-codex:latest"
+
+
+def test_claude_runner_does_not_require_host_anthropic_key(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    argv_dump = tmp_path / "docker.argv"
+    _write_executable(
+        bin_dir / "docker",
+        "#!/bin/bash\n"
+        "printf '%s\\n' \"$@\" > \"$DOCKER_ARGV_DUMP\"\n",
+    )
+
+    env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "DOCKER_ARGV_DUMP": str(argv_dump),
+            "REHEARSE_SESSION_WORKSPACE": str(tmp_path / "ws"),
+            "REHEARSE_SESSION_DATA": str(tmp_path / "ws" / "data"),
+            "REHEARSE_SESSION_HOME": str(tmp_path / "ws" / "home" / "agent"),
+            "REHEARSE_SESSION_A": str(tmp_path / "A"),
+            "REHEARSE_SESSION_B": str(tmp_path / "B"),
+            "REHEARSE_AGENT_IMAGE": "rehearse-agent-cc:latest",
+            "REHEARSE_AGENT_UID": "10000",
+            "REHEARSE_AGENT_GID": "10000",
+            "REHEARSE_AGENT_TIMEOUT": "3600",
+        }
+    )
+
+    result = subprocess.run(
+        [str(REPO_ROOT / "scripts" / "run-agent-cc.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    argv = argv_dump.read_text().splitlines()
+    assert "ANTHROPIC_API_KEY=sk-test" not in argv
+    assert argv[-1] == "rehearse-agent-cc:latest"
 
 
 def test_codex_entrypoint_runs_exec_with_stdin_prompt(
@@ -126,6 +169,82 @@ def test_codex_entrypoint_runs_exec_with_stdin_prompt(
     assert "sort files" in stdin_dump.read_text()
 
 
+def test_codex_entrypoint_sources_agent_init(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    env_dump = tmp_path / "codex.env"
+    _write_executable(
+        bin_dir / "codex",
+        "#!/bin/bash\n"
+        "printf 'OPENROUTER_API_KEY=%s\\n' \"$OPENROUTER_API_KEY\" > \"$CODEX_ENV_DUMP\"\n"
+        "cat >/dev/null\n",
+    )
+
+    data = tmp_path / "data"
+    data.mkdir()
+    home_root = tmp_path / "home"
+    home = home_root / ".codex"
+    init_dir = home_root / ".rehearse" / "agent"
+    home.mkdir(parents=True)
+    init_dir.mkdir(parents=True)
+    (init_dir / "init.sh").write_text("export OPENROUTER_API_KEY=sk-openrouter\n")
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "CODEX_ENV_DUMP": str(env_dump),
+            "CODEX_HOME": str(home),
+            "HOME": str(home_root),
+            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_TIMEOUT": "5",
+            "REHEARSE_AGENT_PROMPT_PATH": str(REPO_ROOT / "prompts" / "agent.md"),
+        }
+    )
+
+    result = subprocess.run(
+        [str(REPO_ROOT / "docker" / "codex" / "entrypoint.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert env_dump.read_text() == "OPENROUTER_API_KEY=sk-openrouter\n"
+
+
+def test_codex_entrypoint_fails_when_agent_init_fails(
+    tmp_path: Path,
+) -> None:
+    data = tmp_path / "data"
+    data.mkdir()
+    home_root = tmp_path / "home"
+    init_dir = home_root / ".rehearse" / "agent"
+    init_dir.mkdir(parents=True)
+    (init_dir / "init.sh").write_text("exit 42\n")
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "HOME": str(home_root),
+            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_TIMEOUT": "5",
+            "REHEARSE_AGENT_PROMPT_PATH": str(REPO_ROOT / "prompts" / "agent.md"),
+        }
+    )
+
+    result = subprocess.run(
+        [str(REPO_ROOT / "docker" / "codex" / "entrypoint.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 42
+
+
 def test_codex_entrypoint_resumes_existing_session(
     tmp_path: Path,
 ) -> None:
@@ -175,3 +294,46 @@ def test_codex_entrypoint_resumes_existing_session(
         "--last",
         "--dangerously-bypass-approvals-and-sandbox",
     ]
+
+
+def test_claude_entrypoint_sources_agent_init_before_key_check(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    env_dump = tmp_path / "claude.env"
+    _write_executable(
+        bin_dir / "claude",
+        "#!/bin/bash\n"
+        "printf 'ANTHROPIC_API_KEY=%s\\n' \"$ANTHROPIC_API_KEY\" > \"$CLAUDE_ENV_DUMP\"\n",
+    )
+
+    data = tmp_path / "data"
+    data.mkdir()
+    home_root = tmp_path / "home"
+    init_dir = home_root / ".rehearse" / "agent"
+    init_dir.mkdir(parents=True)
+    (init_dir / "init.sh").write_text("export ANTHROPIC_API_KEY=sk-ant-test\n")
+
+    env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "CLAUDE_ENV_DUMP": str(env_dump),
+            "HOME": str(home_root),
+            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_TIMEOUT": "5",
+            "REHEARSE_AGENT_PROMPT_PATH": str(REPO_ROOT / "prompts" / "agent.md"),
+        }
+    )
+
+    result = subprocess.run(
+        [str(REPO_ROOT / "docker" / "claude-code" / "entrypoint.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert env_dump.read_text() == "ANTHROPIC_API_KEY=sk-ant-test\n"

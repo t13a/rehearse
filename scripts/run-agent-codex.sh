@@ -30,10 +30,6 @@ args=(
   -e "REHEARSE_AGENT_TIMEOUT=${REHEARSE_AGENT_TIMEOUT}"
 )
 
-if [ -n "${OPENAI_API_KEY:-}" ]; then
-  args+=(-e "OPENAI_API_KEY=${OPENAI_API_KEY}")
-fi
-
 if [ -n "${REHEARSE_AGENT_MESSAGE:-}" ]; then
   args+=(-e "REHEARSE_AGENT_MESSAGE=${REHEARSE_AGENT_MESSAGE}")
 fi

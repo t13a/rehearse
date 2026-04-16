@@ -5,6 +5,12 @@
 # parameters from the environment, then exec's `claude` under `timeout`.
 set -euo pipefail
 
+agent_init="$HOME/.rehearse/agent/init.sh"
+if [ -f "${agent_init}" ]; then
+  # shellcheck source=/dev/null
+  . "${agent_init}"
+fi
+
 : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"
 
 cd "${REHEARSE_WORKSPACE_DATA:-/workspace/data}"
@@ -12,7 +18,7 @@ cd "${REHEARSE_WORKSPACE_DATA:-/workspace/data}"
 args=(
   --print
   --permission-mode bypassPermissions
-  --append-system-prompt "$(cat /opt/rehearse/prompts/agent.md)"
+  --append-system-prompt "$(cat "${REHEARSE_AGENT_PROMPT_PATH:-/opt/rehearse/prompts/agent.md}")"
 )
 
 if [ -n "${REHEARSE_MCP_CONFIG_PATH:-}" ] && [ -f "${REHEARSE_MCP_CONFIG_PATH}" ]; then
