@@ -18,7 +18,7 @@ def _write_executable(path: Path, content: str) -> Path:
     return path
 
 
-def test_codex_runner_assembles_docker_env(
+def test_docker_runner_assembles_docker_env(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"
@@ -53,7 +53,7 @@ def test_codex_runner_assembles_docker_env(
     )
 
     result = subprocess.run(
-        [str(REPO_ROOT / "scripts" / "run-agent-codex.sh")],
+        [str(REPO_ROOT / "scripts" / "docker-runner.sh")],
         env=env,
         capture_output=True,
         text=True,
@@ -64,19 +64,21 @@ def test_codex_runner_assembles_docker_env(
     assert argv[:2] == ["run", "--rm"]
     assert "-e" in argv
     assert "HOME=/home/agent" in argv
-    assert "CODEX_HOME=/home/agent/.codex" in argv
+    assert "CODEX_HOME=/home/agent/.codex" not in argv
     assert "OPENAI_API_KEY=sk-test" not in argv
     assert "REHEARSE_AGENT_MESSAGE=go" in argv
     assert "REHEARSE_AGENT_EXTRA_ARGS=--oss" in argv
     assert argv[-1] == "rehearse-agent-codex:latest"
 
 
-def test_claude_runner_does_not_require_host_anthropic_key(
+def test_docker_runner_does_not_require_host_anthropic_key(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     (tmp_path / "ws").mkdir()
+    mcp = tmp_path / "mcp.json"
+    mcp.write_text("{}\n")
     argv_dump = tmp_path / "docker.argv"
     _write_executable(
         bin_dir / "docker",
@@ -100,11 +102,12 @@ def test_claude_runner_does_not_require_host_anthropic_key(
             "REHEARSE_AGENT_UID": "10000",
             "REHEARSE_AGENT_GID": "10000",
             "REHEARSE_AGENT_TIMEOUT": "3600",
+            "REHEARSE_MCP_CONFIG": str(mcp),
         }
     )
 
     result = subprocess.run(
-        [str(REPO_ROOT / "scripts" / "run-agent-cc.sh")],
+        [str(REPO_ROOT / "scripts" / "docker-runner.sh")],
         env=env,
         capture_output=True,
         text=True,
@@ -113,6 +116,8 @@ def test_claude_runner_does_not_require_host_anthropic_key(
     assert result.returncode == 0, result.stderr
     argv = argv_dump.read_text().splitlines()
     assert "ANTHROPIC_API_KEY=sk-test" not in argv
+    assert "REHEARSE_MCP_CONFIG_PATH=/opt/rehearse/mcp.json" not in argv
+    assert f"{mcp}:/opt/rehearse/mcp.json:ro" not in argv
     assert argv[-1] == "rehearse-agent-cc:latest"
 
 
@@ -150,14 +155,13 @@ def test_agent_runners_fail_when_session_lock_is_held(
 
     with lock_path.open("w") as fd:
         fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
-        for script_name in ("run-agent-codex.sh", "run-agent-cc.sh"):
-            result = subprocess.run(
-                [str(REPO_ROOT / "scripts" / script_name)],
-                env=env,
-                capture_output=True,
-                text=True,
-            )
-            assert result.returncode == 75
+        result = subprocess.run(
+            [str(REPO_ROOT / "scripts" / "docker-runner.sh")],
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 75
 
     assert not docker_called.exists()
 

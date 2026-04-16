@@ -86,33 +86,6 @@ def test_run_agent_passes_required_env(
     config.reload()
 
 
-def test_run_agent_passes_mcp_config_when_set(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    dump = tmp_path / "env.dump"
-    runner = _make_dump_runner(tmp_path, dump)
-    mcp = tmp_path / "mcp.json"
-    mcp.write_text("{}\n")
-
-    config.reload()
-    profile = effective_profile({"agent_runner": str(runner), "mcp_config": str(mcp)})
-
-    workspace = tmp_path / "ws"
-    a = tmp_path / "A"
-    b = tmp_path / "B"
-    workspace.mkdir()
-    a.mkdir()
-    b.mkdir()
-
-    rc = docker.run_agent(workspace, a, b, profile)
-    assert rc == 0
-
-    env = _parse_env(dump)
-    assert env.get("REHEARSE_MCP_CONFIG") == str(mcp.resolve())
-
-    config.reload()
-
-
 def test_run_agent_passes_message_when_set(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

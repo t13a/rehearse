@@ -103,7 +103,6 @@ profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile
   "agent_uid": 10000,
   "agent_gid": 10000,
   "agent_timeout": 3600,
-  "mcp_config": "mcp/fetch.json",
   "agent_extra_args": "--output-format stream-json --verbose",
   "skeleton": "codex"
 }
@@ -116,9 +115,8 @@ profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile
 | `agent_gid` | `10000` | 同 GID |
 | `agent_image` | `rehearse-agent-codex:latest` | agent コンテナの image。 `agent` の標準値を上書きする |
 | `helper_image` | `busybox:latest` | chown / cleanup 用の root コンテナ image |
-| `agent_runner` | `<repo>/scripts/run-agent-codex.sh` | agent を起動する bash スクリプト。 `agent` の標準値を上書きする |
+| `agent_runner` | `<repo>/scripts/docker-runner.sh` | agent image を起動する runner。 Podman 等に差し替える場合に上書きする |
 | `agent_timeout` | `3600` | container 内で `timeout` が agent CLI に与える秒数 |
-| `mcp_config` | `null` | Claude Code ネイティブ形式の MCP 設定 JSON のパス。 Codex では `.codex/config.toml` を使う |
 | `agent_extra_args` | `null` | agent CLI に渡す追加引数 (スペース区切り) |
 | `skeleton` | `default` | `sessions/<id>/home/agent/` にコピーする home skeleton 名 |
 
@@ -163,26 +161,11 @@ SH
 |---|---|---|
 | `REHEARSE_ROOT` | `~/.local/share/rehearse` | workspace / lock / profile / skeleton の置き場 |
 
-### MCP 設定の例
-
-リモート MCP サーバーをひとつ繋ぐ最小例:
-
-```json
-{
-  "mcpServers": {
-    "fetch": {
-      "type": "http",
-      "url": "https://example.com/mcp"
-    }
-  }
-}
-```
-
-Claude Code agent では、これを profile の `mcp_config` に指定すると `mcp__fetch__*` ツールが見える。 image を再ビルドする必要はない。 Codex agent では `.codex/config.toml` 側で MCP を設定する。
+MCP など agent 固有の設定は profile ではなく、 skeleton に含める agent-native config に置く。Codex なら `.codex/config.toml`、Claude Code なら Claude Code が読む home 配下の設定ファイルを skeleton で持ち込む。
 
 ### runner の差し替え
 
-既定の `scripts/run-agent-codex.sh` は Codex CLI 用。Claude Code を使う場合は:
+既定の `scripts/docker-runner.sh` は Docker で agent image を起動する。Claude Code を使う場合は:
 
 ```bash
 mkdir -p "$HOME/.local/share/rehearse/profiles"
@@ -232,5 +215,5 @@ docker run --rm --user 0:0 \
 
 - ✅ Step 1: agent プロンプト ([prompts/agent.md](prompts/agent.md))
 - ✅ Step 2: 最小ハーネスのコード
-- ✅ Step 3: Dockerfile + Codex CLI / Claude Code 起動 + MCP 取り込み
+- ✅ Step 3: Dockerfile + Codex CLI / Claude Code 起動 + skeleton 設定
 - ✅ Step 4: commit アルゴリズム

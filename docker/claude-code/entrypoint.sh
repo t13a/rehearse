@@ -1,7 +1,7 @@
 #!/bin/bash
 # Container entrypoint for the rehearse Claude Code agent.
 #
-# Run inside the container by `scripts/run-agent-cc.sh`. Reads its
+# Run inside the container by `scripts/docker-runner.sh`. Reads its
 # parameters from the environment, then exec's `claude` under `timeout`.
 set -euo pipefail
 
@@ -20,10 +20,6 @@ args=(
   --permission-mode bypassPermissions
   --append-system-prompt "$(cat "${REHEARSE_AGENT_PROMPT_PATH:-/opt/rehearse/prompts/agent.md}")"
 )
-
-if [ -n "${REHEARSE_MCP_CONFIG_PATH:-}" ] && [ -f "${REHEARSE_MCP_CONFIG_PATH}" ]; then
-  args+=(--mcp-config "${REHEARSE_MCP_CONFIG_PATH}")
-fi
 
 if ls "$HOME/.claude/projects/"*/*.jsonl >/dev/null 2>&1; then
   args+=(--continue)

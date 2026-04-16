@@ -41,12 +41,12 @@ def test_agent_defaults_to_codex(
     effective = profile.effective_profile({})
 
     assert effective.agent == "codex"
-    assert effective.agent_runner == config.DEFAULT_CODEX_AGENT_RUNNER
+    assert effective.agent_runner == config.DEFAULT_AGENT_RUNNER
     assert effective.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
 
     explicit_null = profile.effective_profile({"agent": None})
     assert explicit_null.agent == "codex"
-    assert explicit_null.agent_runner == config.DEFAULT_CODEX_AGENT_RUNNER
+    assert explicit_null.agent_runner == config.DEFAULT_AGENT_RUNNER
     assert explicit_null.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
 
 
@@ -56,7 +56,7 @@ def test_codex_agent_selects_codex_defaults(
     effective = profile.effective_profile({"agent": "codex"})
 
     assert effective.agent == "codex"
-    assert effective.agent_runner == config.DEFAULT_CODEX_AGENT_RUNNER
+    assert effective.agent_runner == config.DEFAULT_AGENT_RUNNER
     assert effective.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
 
 
@@ -66,7 +66,7 @@ def test_claude_code_agent_selects_claude_defaults(
     effective = profile.effective_profile({"agent": "claude-code"})
 
     assert effective.agent == "claude-code"
-    assert effective.agent_runner == config.DEFAULT_CLAUDE_CODE_AGENT_RUNNER
+    assert effective.agent_runner == config.DEFAULT_AGENT_RUNNER
     assert effective.agent_image == config.DEFAULT_CLAUDE_CODE_AGENT_IMAGE
 
 
@@ -130,13 +130,18 @@ def test_relative_paths_resolve_from_rehearse_root(
 ) -> None:
     raw = {
         "agent_runner": "bin/runner.sh",
-        "mcp_config": "mcp/config.json",
     }
 
     effective = profile.effective_profile(raw)
 
     assert effective.agent_runner == rehearse_root / "bin" / "runner.sh"
-    assert effective.mcp_config == rehearse_root / "mcp" / "config.json"
+
+
+def test_mcp_config_is_not_a_profile_field(
+    rehearse_root: Path,
+) -> None:
+    with pytest.raises(profile.ProfileError, match="extra_forbidden"):
+        profile.effective_profile({"mcp_config": "mcp/config.json"})
 
 
 def test_skeleton_defaults_to_default(

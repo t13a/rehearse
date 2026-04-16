@@ -14,14 +14,8 @@ from rehearse import config
 
 PROFILE_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 AGENT_DEFAULTS = {
-    "codex": (
-        config.DEFAULT_CODEX_AGENT_RUNNER,
-        config.DEFAULT_CODEX_AGENT_IMAGE,
-    ),
-    "claude-code": (
-        config.DEFAULT_CLAUDE_CODE_AGENT_RUNNER,
-        config.DEFAULT_CLAUDE_CODE_AGENT_IMAGE,
-    ),
+    "codex": config.DEFAULT_CODEX_AGENT_IMAGE,
+    "claude-code": config.DEFAULT_CLAUDE_CODE_AGENT_IMAGE,
 }
 
 
@@ -39,7 +33,6 @@ class RawProfile(BaseModel):
     helper_image: str | None = None
     agent_runner: Path | None = None
     agent_timeout: int | None = None
-    mcp_config: Path | None = None
     agent_extra_args: str | None = None
     skeleton: str | None = None
 
@@ -59,7 +52,6 @@ class EffectiveProfile(BaseModel):
     helper_image: str
     agent_runner: Path
     agent_timeout: int
-    mcp_config: Path | None
     agent_extra_args: str | None
     skeleton: str
 
@@ -121,15 +113,10 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
         raise ProfileError(f"invalid session profile: {e}") from e
 
     agent = config.DEFAULT_AGENT if profile.agent is None else profile.agent
-    default_runner, default_image = AGENT_DEFAULTS[agent]
+    default_image = AGENT_DEFAULTS[agent]
     agent_runner = (
-        default_runner if profile.agent_runner is None
+        config.DEFAULT_AGENT_RUNNER if profile.agent_runner is None
         else _resolve_root_relative(profile.agent_runner)
-    )
-    mcp_config = (
-        None
-        if profile.mcp_config is None
-        else _resolve_root_relative(profile.mcp_config)
     )
     skeleton = "default" if profile.skeleton is None else profile.skeleton
     validate_name(skeleton)
@@ -156,7 +143,6 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
             if profile.agent_timeout is None
             else profile.agent_timeout
         ),
-        mcp_config=mcp_config,
         agent_extra_args=profile.agent_extra_args,
         skeleton=skeleton,
     )

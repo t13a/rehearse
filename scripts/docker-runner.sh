@@ -1,13 +1,9 @@
 #!/bin/bash
-# rehearse agent runner for Claude Code.
+# rehearse Docker runner for agent images.
 #
-# Contract: the harness exports REHEARSE_SESSION_* / REHEARSE_AGENT_* /
-# REHEARSE_MCP_CONFIG into the environment, then exec's this script. The
-# script assembles the docker invocation and lets the container's exit code
-# propagate as its own.
-#
-# Swap this out via profile agent_runner if you want a different agent
-# (OpenCode, a local LLM, a fake runner for tests, ...).
+# Contract: the harness exports REHEARSE_SESSION_* / REHEARSE_AGENT_* into the
+# environment, then exec's this script. The script assembles the docker
+# invocation and lets the container's exit code propagate as its own.
 set -euo pipefail
 
 : "${REHEARSE_SESSION_WORKSPACE:?required}"
@@ -33,13 +29,6 @@ args=(
   -e "REHEARSE_WORKSPACE_DATA=${REHEARSE_SESSION_DATA}"
   -e "REHEARSE_AGENT_TIMEOUT=${REHEARSE_AGENT_TIMEOUT}"
 )
-
-if [ -n "${REHEARSE_MCP_CONFIG:-}" ] && [ -f "${REHEARSE_MCP_CONFIG}" ]; then
-  args+=(
-    -v "${REHEARSE_MCP_CONFIG}:/opt/rehearse/mcp.json:ro"
-    -e "REHEARSE_MCP_CONFIG_PATH=/opt/rehearse/mcp.json"
-  )
-fi
 
 if [ -n "${REHEARSE_AGENT_MESSAGE:-}" ]; then
   args+=(-e "REHEARSE_AGENT_MESSAGE=${REHEARSE_AGENT_MESSAGE}")

@@ -63,7 +63,7 @@ def run_agent(workspace: Path, a: Path, b: Path, profile: EffectiveProfile, *,
               message: str | None = None) -> int:
     """Invoke the external agent runner script.
 
-    The runner is a bash script (`scripts/run-agent-codex.sh` by default) that
+    The runner is a bash script (`scripts/docker-runner.sh` by default) that
     knows how to launch the underlying agent (Codex CLI, Claude Code, ...).
     The harness only passes parameters via environment variables and observes
     the runner's exit code. Tests set profile.agent_runner to point at a fake
@@ -82,10 +82,6 @@ def run_agent(workspace: Path, a: Path, b: Path, profile: EffectiveProfile, *,
     env["REHEARSE_AGENT_UID"] = str(profile.agent_uid)
     env["REHEARSE_AGENT_GID"] = str(profile.agent_gid)
     env["REHEARSE_AGENT_TIMEOUT"] = str(profile.agent_timeout)
-    if profile.mcp_config is not None:
-        env["REHEARSE_MCP_CONFIG"] = str(profile.mcp_config)
-    else:
-        env.pop("REHEARSE_MCP_CONFIG", None)
     if profile.agent_extra_args is not None:
         env["REHEARSE_AGENT_EXTRA_ARGS"] = profile.agent_extra_args
     else:

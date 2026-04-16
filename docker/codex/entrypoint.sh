@@ -1,7 +1,7 @@
 #!/bin/bash
 # Container entrypoint for the rehearse Codex CLI agent.
 #
-# Run inside the container by `scripts/run-agent-codex.sh`. Reads its
+# Run inside the container by `scripts/docker-runner.sh`. Reads its
 # parameters from the environment, then runs `codex exec` under `timeout`.
 set -euo pipefail
 

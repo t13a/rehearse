@@ -24,9 +24,7 @@ DEFAULT_CLAUDE_CODE_AGENT_IMAGE: str = "rehearse-agent-cc:latest"
 DEFAULT_AGENT_IMAGE: str = DEFAULT_CODEX_AGENT_IMAGE
 DEFAULT_HELPER_IMAGE: str = "busybox:latest"
 DEFAULT_AGENT_TIMEOUT: int = 3600
-DEFAULT_CODEX_AGENT_RUNNER: Path = _REPO_ROOT / "scripts" / "run-agent-codex.sh"
-DEFAULT_CLAUDE_CODE_AGENT_RUNNER: Path = _REPO_ROOT / "scripts" / "run-agent-cc.sh"
-DEFAULT_AGENT_RUNNER: Path = DEFAULT_CODEX_AGENT_RUNNER
+DEFAULT_AGENT_RUNNER: Path = _REPO_ROOT / "scripts" / "docker-runner.sh"
 
 SESSIONS_DIR: Path = REHEARSE_ROOT / "sessions"
 LOCKS_DIR: Path = REHEARSE_ROOT / "locks"
