@@ -5,11 +5,12 @@
 set -euo pipefail
 
 : "${REHEARSE_SESSION_DATA:?required}"
+: "${REHEARSE_SESSION_RUN_LOCK:?required}"
 : "${REHEARSE_AGENT_UID:?required}"
 : "${REHEARSE_AGENT_GID:?required}"
 : "${REHEARSE_AGENT_IMAGE:?required}"
 
-exec docker run --rm \
+exec flock -F -E 75 -n "${REHEARSE_SESSION_RUN_LOCK}" docker run --rm \
   --user "${REHEARSE_AGENT_UID}:${REHEARSE_AGENT_GID}" \
   -v "${REHEARSE_SESSION_DATA}:${REHEARSE_SESSION_DATA}:rw" \
   -w "${REHEARSE_SESSION_DATA}" \

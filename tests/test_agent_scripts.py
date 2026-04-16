@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
 import stat
 import subprocess
@@ -22,6 +23,7 @@ def test_codex_runner_assembles_docker_env(
 ) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
+    (tmp_path / "ws").mkdir()
     argv_dump = tmp_path / "docker.argv"
     _write_executable(
         bin_dir / "docker",
@@ -37,6 +39,7 @@ def test_codex_runner_assembles_docker_env(
             "REHEARSE_SESSION_WORKSPACE": str(tmp_path / "ws"),
             "REHEARSE_SESSION_DATA": str(tmp_path / "ws" / "data"),
             "REHEARSE_SESSION_HOME": str(tmp_path / "ws" / "home" / "agent"),
+            "REHEARSE_SESSION_RUN_LOCK": str(tmp_path / "ws" / "run.lock"),
             "REHEARSE_SESSION_A": str(tmp_path / "A"),
             "REHEARSE_SESSION_B": str(tmp_path / "B"),
             "REHEARSE_AGENT_IMAGE": "rehearse-agent-codex:latest",
@@ -73,6 +76,7 @@ def test_claude_runner_does_not_require_host_anthropic_key(
 ) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
+    (tmp_path / "ws").mkdir()
     argv_dump = tmp_path / "docker.argv"
     _write_executable(
         bin_dir / "docker",
@@ -89,6 +93,7 @@ def test_claude_runner_does_not_require_host_anthropic_key(
             "REHEARSE_SESSION_WORKSPACE": str(tmp_path / "ws"),
             "REHEARSE_SESSION_DATA": str(tmp_path / "ws" / "data"),
             "REHEARSE_SESSION_HOME": str(tmp_path / "ws" / "home" / "agent"),
+            "REHEARSE_SESSION_RUN_LOCK": str(tmp_path / "ws" / "run.lock"),
             "REHEARSE_SESSION_A": str(tmp_path / "A"),
             "REHEARSE_SESSION_B": str(tmp_path / "B"),
             "REHEARSE_AGENT_IMAGE": "rehearse-agent-cc:latest",
@@ -109,6 +114,52 @@ def test_claude_runner_does_not_require_host_anthropic_key(
     argv = argv_dump.read_text().splitlines()
     assert "ANTHROPIC_API_KEY=sk-test" not in argv
     assert argv[-1] == "rehearse-agent-cc:latest"
+
+
+def test_agent_runners_fail_when_session_lock_is_held(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (tmp_path / "ws").mkdir()
+    docker_called = tmp_path / "docker.called"
+    _write_executable(
+        bin_dir / "docker",
+        "#!/bin/bash\n"
+        "touch \"$DOCKER_CALLED\"\n",
+    )
+
+    lock_path = tmp_path / "ws" / "run.lock"
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "DOCKER_CALLED": str(docker_called),
+            "REHEARSE_SESSION_WORKSPACE": str(tmp_path / "ws"),
+            "REHEARSE_SESSION_DATA": str(tmp_path / "ws" / "data"),
+            "REHEARSE_SESSION_HOME": str(tmp_path / "ws" / "home" / "agent"),
+            "REHEARSE_SESSION_RUN_LOCK": str(lock_path),
+            "REHEARSE_SESSION_A": str(tmp_path / "A"),
+            "REHEARSE_SESSION_B": str(tmp_path / "B"),
+            "REHEARSE_AGENT_IMAGE": "rehearse-agent:test",
+            "REHEARSE_AGENT_UID": "10000",
+            "REHEARSE_AGENT_GID": "10000",
+            "REHEARSE_AGENT_TIMEOUT": "3600",
+        }
+    )
+
+    with lock_path.open("w") as fd:
+        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
+        for script_name in ("run-agent-codex.sh", "run-agent-cc.sh"):
+            result = subprocess.run(
+                [str(REPO_ROOT / "scripts" / script_name)],
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode == 75
+
+    assert not docker_called.exists()
 
 
 def test_codex_entrypoint_runs_exec_with_stdin_prompt(

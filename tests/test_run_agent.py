@@ -37,6 +37,7 @@ REQUIRED_KEYS = {
     "REHEARSE_SESSION_WORKSPACE",
     "REHEARSE_SESSION_DATA",
     "REHEARSE_SESSION_HOME",
+    "REHEARSE_SESSION_RUN_LOCK",
     "REHEARSE_SESSION_A",
     "REHEARSE_SESSION_B",
     "REHEARSE_AGENT_IMAGE",
@@ -73,6 +74,7 @@ def test_run_agent_passes_required_env(
     assert env["REHEARSE_SESSION_WORKSPACE"] == str(workspace)
     assert env["REHEARSE_SESSION_DATA"] == str(workspace / "data")
     assert env["REHEARSE_SESSION_HOME"] == str(workspace / "home" / "agent")
+    assert env["REHEARSE_SESSION_RUN_LOCK"] == str(workspace / "run.lock")
     assert env["REHEARSE_SESSION_A"] == str(a)
     assert env["REHEARSE_SESSION_B"] == str(b)
     assert env["REHEARSE_AGENT_IMAGE"] == config.DEFAULT_AGENT_IMAGE

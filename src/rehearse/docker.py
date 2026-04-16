@@ -16,6 +16,9 @@ from typing import Iterable
 from rehearse.profile import EffectiveProfile
 
 
+RUN_LOCK_BUSY_EXIT = 75
+
+
 class DockerError(RuntimeError):
     """Raised when a docker invocation returns non-zero."""
 
@@ -72,6 +75,7 @@ def run_agent(workspace: Path, a: Path, b: Path, profile: EffectiveProfile, *,
     env["REHEARSE_SESSION_WORKSPACE"] = str(workspace)
     env["REHEARSE_SESSION_DATA"] = str(workspace / "data")
     env["REHEARSE_SESSION_HOME"] = str(workspace / "home" / "agent")
+    env["REHEARSE_SESSION_RUN_LOCK"] = str(workspace / "run.lock")
     env["REHEARSE_SESSION_A"] = str(a)
     env["REHEARSE_SESSION_B"] = str(b)
     env["REHEARSE_AGENT_IMAGE"] = profile.agent_image

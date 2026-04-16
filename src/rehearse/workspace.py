@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import fcntl
 import hashlib
 import time
@@ -28,6 +29,10 @@ def data_path(session_id: str) -> Path:
     return session_path(session_id) / "data"
 
 
+def run_lock_path(session_dir: Path) -> Path:
+    return session_dir / "run.lock"
+
+
 def ensure_root_dirs() -> None:
     sessions_dir().mkdir(parents=True, exist_ok=True)
     locks_dir().mkdir(parents=True, exist_ok=True)
@@ -42,6 +47,23 @@ def flock_exclusive(lock_path: Path) -> Iterator[None]:
         yield
     finally:
         fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+        fd.close()
+
+
+def flock_is_locked(lock_path: Path) -> bool:
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = lock_path.open("a")
+    try:
+        try:
+            fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as e:
+            if e.errno in (errno.EACCES, errno.EAGAIN):
+                return True
+            raise
+        else:
+            fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+            return False
+    finally:
         fd.close()
 
 

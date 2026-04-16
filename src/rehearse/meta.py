@@ -7,7 +7,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class SessionStatus(str, Enum):
@@ -31,6 +31,13 @@ class SessionMeta(BaseModel):
     profile_name: str
     profile: dict[str, Any]
     exit_reason: str | None = None
+
+    @field_validator("status")
+    @classmethod
+    def reject_persisted_running(cls, value: SessionStatus) -> SessionStatus:
+        if value == SessionStatus.running:
+            raise ValueError("status=running must not be persisted")
+        return value
 
 
 def meta_path(workspace: Path) -> Path:

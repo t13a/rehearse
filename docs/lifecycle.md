@@ -27,7 +27,7 @@ stateDiagram-v2
 | 状態 | 説明 |
 |---|---|
 | `created` | `rehearse create` が workspace を構築した直後、まだ `run` していない |
-| `running` | コンテナが稼働中 |
+| `running` | セッションの run lock が保持され、agent runner が稼働中 |
 | `done` | `outbox/.done` が存在する状態で container 正常終了 |
 | `failed` | `outbox/.done` なしで container 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
 | `committed` | `commit` が完了し、実ファイルが A→B に移動済み |
@@ -35,6 +35,8 @@ stateDiagram-v2
 | `purged` | workspace が物理削除された |
 
 `done` と `failed` の区別は重要。 `done` は「 agent が自分で完了と判断した」正常系。 `failed` は agent が完走しなかった異常系で、レビュー時に扱いを変えることがある。 harness の挙動 (commit/discard/run) は両者で同じなので、状態としては 2 つに畳んでいる。
+
+`running` は特殊で、 `meta.json` に永続化する静的状態ではない。 `sessions/<id>/run.lock` が `flock` で保持されている間だけ、コマンドはその session を `running` と見なす。これにより `Ctrl+C`、端末切断、 runner crash などでプロセスが消えれば lock も解放され、次のコマンドが stale な `running` に閉じ込められない。 `meta.json` に `running` が保存されていた場合は不正な session state として扱う。
 
 ## コマンド
 
@@ -53,7 +55,7 @@ stateDiagram-v2
 ### `rehearse run <session> [-m <message>]`
 
 - `meta.json` に転記済みの profile に既定値を適用し、外部 runner script を起動して終了まで block
-- runner は内部で `docker run --rm` を組み立てて agent コンテナを回す
+- runner は `sessions/<id>/run.lock` を `flock` で保持しながら、内部で `docker run --rm` を組み立てて agent コンテナを回す
 - agent は entrypoint 内で `timeout ${REHEARSE_AGENT_TIMEOUT} <agent-cli> ...` として起動される。既定は Codex CLI の `codex exec`
 - 終了後、 `meta.json` の状態と `exit_reason` を更新
   - exit 0 + `outbox/.done` あり → `done` (`exit_reason="normal"`)

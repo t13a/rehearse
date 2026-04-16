@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from rehearse import commands, config
-from rehearse.meta import SessionStatus, read_meta, write_meta
+from rehearse import commands, config, workspace
+from rehearse.meta import SessionStatus, meta_path, read_meta, write_meta
 
 
 pytestmark = pytest.mark.docker
@@ -78,7 +78,7 @@ def test_full_lifecycle(
     assert not session_dir.exists()
 
 
-def test_cannot_purge_running_session(
+def test_cannot_purge_locked_running_session(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
@@ -89,18 +89,83 @@ def test_cannot_purge_running_session(
     session_id = capsys.readouterr().out.strip()
     session_dir = config.SESSIONS_DIR / session_id
 
-    # Forcibly mark as running without actually running.
-    meta = read_meta(session_dir)
-    meta.status = SessionStatus.running
-    write_meta(session_dir, meta)
-
-    assert commands.cmd_purge(session_id) == 2
+    with workspace.flock_exclusive(workspace.run_lock_path(session_dir)):
+        assert commands.cmd_purge(session_id) == 2
     err = capsys.readouterr().err
     assert "running" in err
 
-    # reset so teardown can clean up
-    meta.status = SessionStatus.failed
+
+def test_status_rejects_persisted_running_status(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    assert commands.cmd_create(str(a), str(b)) == 0
+    session_id = capsys.readouterr().out.strip()
+    session_dir = config.SESSIONS_DIR / session_id
+
+    raw = meta_path(session_dir).read_text()
+    meta_path(session_dir).write_text(
+        raw.replace('"status": "created"', '"status": "running"')
+    )
+
+    with pytest.raises(ValueError, match="status=running must not be persisted"):
+        commands.cmd_status(session_id)
+
+    meta_path(session_dir).write_text(raw)
+
+
+def test_status_reports_locked_session_as_running(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    assert commands.cmd_create(str(a), str(b)) == 0
+    session_id = capsys.readouterr().out.strip()
+    session_dir = config.SESSIONS_DIR / session_id
+
+    meta = read_meta(session_dir)
+    meta.status = SessionStatus.done
     write_meta(session_dir, meta)
+
+    with workspace.flock_exclusive(workspace.run_lock_path(session_dir)):
+        assert commands.cmd_status(session_id) == 0
+    detail = capsys.readouterr().out
+    assert '"status": "running"' in detail
+
+    meta = read_meta(session_dir)
+    assert meta.status == SessionStatus.done
+
+
+def test_interrupted_run_does_not_persist_running_status(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    a, b = fake_ab
+    assert commands.cmd_create(str(a), str(b)) == 0
+    session_id = capsys.readouterr().out.strip()
+    session_dir = config.SESSIONS_DIR / session_id
+
+    def interrupt(*args: object, **kwargs: object) -> int:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(commands.docker, "run_agent", interrupt)
+
+    with pytest.raises(KeyboardInterrupt):
+        commands.cmd_run(session_id)
+
+    meta = read_meta(session_dir)
+    assert meta.status == SessionStatus.failed
+    assert meta.started_at is not None
+    assert meta.ended_at is None
+    assert meta.exit_reason == "interrupted"
 
 
 def test_run_from_done_session(

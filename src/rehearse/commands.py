@@ -7,7 +7,15 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from rehearse import commit, docker, mirror, profile as profile_mod, skeleton, validate, workspace
+from rehearse import (
+    commit,
+    docker,
+    mirror,
+    profile as profile_mod,
+    skeleton,
+    validate,
+    workspace,
+)
 from rehearse.meta import SessionMeta, SessionStatus, read_meta, write_meta
 
 
@@ -24,6 +32,12 @@ def _resolve_session_dir(session_id: str) -> Path:
     if not path.exists():
         raise SystemExit(f"session not found: {session_id}")
     return path
+
+
+def _status_for_guards(session_dir: Path, meta: SessionMeta) -> SessionStatus:
+    if workspace.flock_is_locked(workspace.run_lock_path(session_dir)):
+        return SessionStatus.running
+    return meta.status
 
 
 # ---- create ------------------------------------------------------------
@@ -97,7 +111,8 @@ def cmd_status(session_id: str | None) -> int:
         for entry in sorted(sessions.iterdir()):
             try:
                 meta = read_meta(entry)
-                rows.append((meta.session_id, meta.status.value, str(meta.a), str(meta.b)))
+                status = _status_for_guards(entry, meta)
+                rows.append((meta.session_id, status.value, str(meta.a), str(meta.b)))
             except Exception:
                 rows.append((entry.name, "?", "-", "-"))
         for sid, status, a, b in rows:
@@ -106,6 +121,7 @@ def cmd_status(session_id: str | None) -> int:
 
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
+    meta.status = _status_for_guards(session_dir, meta)
     print(meta.model_dump_json(indent=2))
     return 0
 
@@ -121,22 +137,36 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
         print(f"profile failed: {e}", file=sys.stderr)
         return 2
 
-    allowed = (SessionStatus.created, SessionStatus.done, SessionStatus.failed, SessionStatus.committed)
-    if meta.status not in allowed:
+    status = _status_for_guards(session_dir, meta)
+    allowed = (
+        SessionStatus.created,
+        SessionStatus.done,
+        SessionStatus.failed,
+        SessionStatus.committed,
+    )
+    if status not in allowed:
         print(
-            f"cannot run session in status={meta.status.value}",
+            f"cannot run session in status={status.value}",
             file=sys.stderr,
         )
         return 2
 
-    meta.status = SessionStatus.running
-    meta.started_at = _now()
+    started_at = _now()
+    meta.status = SessionStatus.failed
+    meta.started_at = started_at
+    meta.ended_at = None
+    meta.exit_reason = "interrupted"
     write_meta(session_dir, meta)
 
     rc = docker.run_agent(
         session_dir, meta.a, meta.b, effective_profile, message=message
     )
+    if rc == docker.RUN_LOCK_BUSY_EXIT:
+        print("cannot run a running session", file=sys.stderr)
+        return 2
 
+    meta = read_meta(session_dir)
+    meta.started_at = started_at
     meta.ended_at = _now()
     done_flag = session_dir / "data" / "outbox" / ".done"
     if done_flag.exists():
@@ -157,7 +187,8 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
 def cmd_discard(session_id: str) -> int:
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
-    if meta.status == SessionStatus.running:
+    status = _status_for_guards(session_dir, meta)
+    if status == SessionStatus.running:
         print("cannot discard a running session", file=sys.stderr)
         return 2
     meta.status = SessionStatus.discarded
@@ -170,7 +201,8 @@ def cmd_discard(session_id: str) -> int:
 def cmd_purge(session_id: str) -> int:
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
-    if meta.status == SessionStatus.running:
+    status = _status_for_guards(session_dir, meta)
+    if status == SessionStatus.running:
         print("cannot purge a running session", file=sys.stderr)
         return 2
     try:
@@ -188,10 +220,11 @@ def cmd_commit(session_id: str) -> int:
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
 
+    status = _status_for_guards(session_dir, meta)
     allowed = (SessionStatus.done, SessionStatus.failed, SessionStatus.committed)
-    if meta.status not in allowed:
+    if status not in allowed:
         print(
-            f"cannot commit session in status={meta.status.value}",
+            f"cannot commit session in status={status.value}",
             file=sys.stderr,
         )
         return 2

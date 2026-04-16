@@ -13,6 +13,7 @@ set -euo pipefail
 : "${REHEARSE_SESSION_WORKSPACE:?required}"
 : "${REHEARSE_SESSION_DATA:?required}"
 : "${REHEARSE_SESSION_HOME:?required}"
+: "${REHEARSE_SESSION_RUN_LOCK:?required}"
 : "${REHEARSE_SESSION_A:?required}"
 : "${REHEARSE_SESSION_B:?required}"
 : "${REHEARSE_AGENT_IMAGE:?required}"
@@ -50,4 +51,4 @@ fi
 
 args+=("${REHEARSE_AGENT_IMAGE}")
 
-exec "${args[@]}"
+exec flock -F -E 75 -n "${REHEARSE_SESSION_RUN_LOCK}" "${args[@]}"

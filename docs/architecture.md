@@ -144,6 +144,7 @@ harness は以下の環境変数を runner にエクスポートする:
 | `REHEARSE_SESSION_WORKSPACE` | session directory (host path) |
 | `REHEARSE_SESSION_DATA` | `data/` の host path |
 | `REHEARSE_SESSION_HOME` | `home/agent/` の host path (= container 内 `/home/agent` の bind 元) |
+| `REHEARSE_SESSION_RUN_LOCK` | run 中だけ runner が `flock` で保持する session lock |
 | `REHEARSE_SESSION_A` | A の host path (RO mount に使う) |
 | `REHEARSE_SESSION_B` | B の host path (RO mount に使う) |
 | `REHEARSE_AGENT_IMAGE` | 使う image |
@@ -152,6 +153,8 @@ harness は以下の環境変数を runner にエクスポートする:
 | `REHEARSE_MCP_CONFIG` | MCP 設定 JSON の host path (optional) |
 
 runner は上記だけを使って `docker run` を組み立て、 container の exit code を自分の exit code としてそのまま返す。 harness はその数字だけを観察する。
+
+`running` は Docker など特定の runtime ではなく、 `REHEARSE_SESSION_RUN_LOCK` の `flock` から導出する。 runner が lock を握っている間だけ `status` / `commit` / `discard` / `purge` は session を実行中として扱う。プロセス終了時には OS が lock を解放するため、 `Ctrl+C` や runner crash の後に stale な `running` が残らない。
 
 これらの `REHEARSE_AGENT_*` は harness と runner の内部契約であり、ユーザー向け設定ではない。ユーザーは `$REHEARSE_ROOT/profiles/<name>.json` に `agent` / `agent_image` / `agent_uid` / `agent_timeout` / `mcp_config` などを書き、 `rehearse create -p <name> ...` で session に転記する。
 
