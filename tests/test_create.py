@@ -53,6 +53,14 @@ def test_create_builds_workspace(
     sub_mode = stat.S_IMODE(os.stat(data / "outbox" / "existing").st_mode)
     assert sub_mode == 0o1777
 
+    # data/ starts guard-owned so rw container paths don't retain host ownership
+    data_stat = os.lstat(data)
+    assert data_stat.st_uid == config.DEFAULT_GUARD_UID
+    assert data_stat.st_gid == config.DEFAULT_GUARD_GID
+    outbox_link_stat = os.lstat(data / "outbox" / "existing" / "old.txt")
+    assert outbox_link_stat.st_uid == config.DEFAULT_GUARD_UID
+    assert outbox_link_stat.st_gid == config.DEFAULT_GUARD_GID
+
     # inbox/ symlinks owned by agent UID after chown handoff
     c_stat = os.lstat(inbox_link)
     assert c_stat.st_uid == config.DEFAULT_AGENT_UID
@@ -147,6 +155,40 @@ def test_create_copies_named_skeleton(
         check=True,
     )
     assert (skel / ".codex" / "auth.json").read_text() == '{"token": "changed-source"}\n'
+
+
+def test_create_guard_owned_b_mirror_rejects_agent_rename(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    if config.DEFAULT_AGENT_UID == 0:
+        pytest.skip("root can bypass sticky bit ownership checks")
+
+    a, b = fake_ab
+    assert commands.cmd_create(str(a), str(b)) == 0
+
+    session_id = capsys.readouterr().out.strip()
+    data = config.SESSIONS_DIR / session_id / "data"
+
+    result = subprocess.run(
+        [
+            "docker", "run", "--rm",
+            "--user", f"{config.DEFAULT_AGENT_UID}:{config.DEFAULT_AGENT_GID}",
+            "-v", f"{data}:{data}:rw",
+            "busybox:latest",
+            "mv",
+            str(data / "outbox" / "existing" / "old.txt"),
+            str(data / "outbox" / "existing" / "renamed.txt"),
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert (data / "outbox" / "existing" / "old.txt").is_symlink()
+    assert not (data / "outbox" / "existing" / "renamed.txt").exists()
 
 
 def test_create_auto_creates_default_skeleton(

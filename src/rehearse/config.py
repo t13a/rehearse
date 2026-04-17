@@ -17,8 +17,10 @@ REHEARSE_ROOT: Path = _env_path(
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_AGENT: str = "codex"
-DEFAULT_AGENT_UID: int = 10000
-DEFAULT_AGENT_GID: int = 10000
+DEFAULT_AGENT_UID: int = os.getuid()
+DEFAULT_AGENT_GID: int = os.getgid()
+DEFAULT_GUARD_UID: int = 65534
+DEFAULT_GUARD_GID: int = 65534
 DEFAULT_CODEX_AGENT_IMAGE: str = "rehearse-agent-codex:latest"
 DEFAULT_CLAUDE_AGENT_IMAGE: str = "rehearse-agent-claude:latest"
 DEFAULT_AGENT_IMAGE: str = DEFAULT_CODEX_AGENT_IMAGE

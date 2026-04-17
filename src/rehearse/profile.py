@@ -29,6 +29,8 @@ class RawProfile(BaseModel):
     agent: str | None = None
     agent_uid: int | None = None
     agent_gid: int | None = None
+    guard_uid: int | None = None
+    guard_gid: int | None = None
     agent_image: str | None = None
     helper_image: str | None = None
     agent_runner: Path | None = None
@@ -48,6 +50,8 @@ class EffectiveProfile(BaseModel):
     agent: str
     agent_uid: int
     agent_gid: int
+    guard_uid: int
+    guard_gid: int
     agent_image: str
     helper_image: str
     agent_runner: Path
@@ -120,15 +124,27 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
     )
     skeleton = "default" if profile.skeleton is None else profile.skeleton
     validate_name(skeleton)
+    agent_uid = (
+        config.DEFAULT_AGENT_UID if profile.agent_uid is None else profile.agent_uid
+    )
+    agent_gid = (
+        config.DEFAULT_AGENT_GID if profile.agent_gid is None else profile.agent_gid
+    )
+    guard_uid = (
+        config.DEFAULT_GUARD_UID if profile.guard_uid is None else profile.guard_uid
+    )
+    guard_gid = (
+        config.DEFAULT_GUARD_GID if profile.guard_gid is None else profile.guard_gid
+    )
+    if agent_uid == guard_uid:
+        raise ProfileError("agent_uid and guard_uid must be different")
 
     return EffectiveProfile(
         agent=agent,
-        agent_uid=(
-            config.DEFAULT_AGENT_UID if profile.agent_uid is None else profile.agent_uid
-        ),
-        agent_gid=(
-            config.DEFAULT_AGENT_GID if profile.agent_gid is None else profile.agent_gid
-        ),
+        agent_uid=agent_uid,
+        agent_gid=agent_gid,
+        guard_uid=guard_uid,
+        guard_gid=guard_gid,
         agent_image=(
             default_image if profile.agent_image is None else profile.agent_image
         ),

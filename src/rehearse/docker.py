@@ -25,8 +25,11 @@ def chown_container(
     workspace: Path,
     paths: Path | Iterable[Path],
     profile: EffectiveProfile,
+    *,
+    uid: int,
+    gid: int,
 ) -> None:
-    """Recursively chown one or more host paths to the agent UID/GID."""
+    """Recursively chown one or more host paths to a numeric UID/GID."""
     if isinstance(paths, Path):
         path_list = [paths]
     else:
@@ -39,7 +42,7 @@ def chown_container(
             str(config.DEFAULT_DOCKER_HELPER),
             "chown",
             "-Rh",
-            f"{profile.agent_uid}:{profile.agent_gid}",
+            f"{uid}:{gid}",
             *[str(p) for p in path_list],
         ],
         env=_helper_env(workspace.parent, profile),

@@ -216,6 +216,6 @@ def test_exec_runs_in_data_dir(
     session_id = capsys.readouterr().out.strip()
     session_dir = config.SESSIONS_DIR / session_id
 
-    out = session_dir / "data" / "cwd.txt"
+    out = session_dir / "data" / "outbox" / "cwd.txt"
     assert commands.cmd_exec(session_id, ["sh", "-c", f"pwd > {out}"]) == 0
     assert out.read_text().strip() == str(session_dir / "data")

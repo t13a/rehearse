@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -48,6 +49,42 @@ def test_agent_defaults_to_codex(
     assert explicit_null.agent == "codex"
     assert explicit_null.agent_runner == config.DEFAULT_AGENT_RUNNER
     assert explicit_null.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
+
+
+def test_uid_gid_defaults_to_host_agent_and_nobody_guard(
+    rehearse_root: Path,
+) -> None:
+    effective = profile.effective_profile({})
+
+    assert effective.agent_uid == os.getuid()
+    assert effective.agent_gid == os.getgid()
+    assert effective.guard_uid == config.DEFAULT_GUARD_UID
+    assert effective.guard_gid == config.DEFAULT_GUARD_GID
+
+
+def test_uid_gid_overrides(
+    rehearse_root: Path,
+) -> None:
+    effective = profile.effective_profile(
+        {
+            "agent_uid": 20000,
+            "agent_gid": 30000,
+            "guard_uid": 20001,
+            "guard_gid": 30000,
+        }
+    )
+
+    assert effective.agent_uid == 20000
+    assert effective.agent_gid == 30000
+    assert effective.guard_uid == 20001
+    assert effective.guard_gid == 30000
+
+
+def test_agent_uid_must_not_match_guard_uid(
+    rehearse_root: Path,
+) -> None:
+    with pytest.raises(profile.ProfileError, match="agent_uid and guard_uid"):
+        profile.effective_profile({"agent_uid": 20000, "guard_uid": 20000})
 
 
 def test_codex_agent_selects_codex_defaults(

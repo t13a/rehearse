@@ -52,31 +52,31 @@ agent の UID から見て:
 
 ```
 workspace/                   owner: harness, mode 755    → host 側メタの置き場、 container 非表示
-workspace/data/              owner: harness, mode 755    → コンテナの mount 先、直下の add/remove 不可
-workspace/data/refs/         owner: harness, mode 755    → 参照用、書込不可
+workspace/data/              owner: guard, mode 755      → コンテナの mount 先、直下の add/remove 不可
+workspace/data/refs/         owner: guard, mode 755      → 参照用、書込不可
 workspace/data/refs/a        symlink                      → 親が書込不可なので動かせない
 workspace/data/refs/b        symlink                      → 同上
-workspace/data/inbox/        owner: harness, mode 777    → 書込可、 agent が自分の symlink を `mv` する出発点
+workspace/data/inbox/        owner: agent, mode 777      → 書込可、 agent が自分の symlink を `mv` する出発点
 workspace/data/inbox/*       owner: agent                 → setup 時に chown コンテナでハンドオフ済み
-workspace/data/outbox/       owner: harness, mode 1777   → sticky + 書込可、中身の既存エントリは動かせない
-workspace/data/outbox/**/    owner: harness, mode 1777   → B-mirror の各サブディレクトリ (sticky)
-workspace/data/outbox/**/*   owner: harness              → B-mirror の symlink 本体 (harness 所有)
+workspace/data/outbox/       owner: guard, mode 1777     → sticky + 書込可、中身の既存エントリは動かせない
+workspace/data/outbox/**/    owner: guard, mode 1777     → B-mirror の各サブディレクトリ (sticky)
+workspace/data/outbox/**/*   owner: guard                → B-mirror の symlink 本体 (guard 所有)
 ```
 
 `data/` と `refs/` の write 権限を落とすことで、 `refs/a`/`refs/b` の symlink 自体を `mv` で剥がされるのを防ぐ。 workspace ルート (`meta.json`, `commit.log`, `.git/`) は container に一切マウントされないので、 agent からは観測不能。
 
-**sticky bit + 所有権ハンドオフによる B-mirror の保護**: `outbox/` とその配下の全サブディレクトリには sticky bit を立てておく (`chmod 1777`)。 `outbox/` の初期内容 (B のミラー = サブディレクトリ + symlink) は harness 所有で作る。 sticky bit は「エントリの所有者でない限り、 directory 内の既存エントリを unlink / rename できない」という POSIX の挙動を使って、 **agent に B-mirror の構造と symlink を物理的に触らせない**ことを実現する:
+**sticky bit + 所有権ハンドオフによる B-mirror の保護**: `outbox/` とその配下の全サブディレクトリには sticky bit を立てておく (`chmod 1777`)。 `outbox/` の初期内容 (B のミラー = サブディレクトリ + symlink) は guard 所有にする。 sticky bit は「エントリの所有者でない限り、 directory 内の既存エントリを unlink / rename できない」という POSIX の挙動を使って、 **agent に B-mirror の構造と symlink を物理的に触らせない**ことを実現する:
 
-- 既存 B-mirror symlink を `mv` しようとすると EPERM (所有者は harness)
+- 既存 B-mirror symlink を `mv` しようとすると EPERM (所有者は guard)
 - B-mirror サブディレクトリを `mv` / `rmdir` しようとすると EPERM (同上)
 - 一方で write 権限は開けてあるので、 agent は B-mirror 内に**新しい**エントリを追加できる (sticky は既存エントリにしか効かない)
 - agent が作った subdir や移動してきた symlink は agent 所有・非 sticky なので、自分の配下では自由に reorg できる
 
-**所有権ハンドオフ**: sticky bit enforcement は「所有者である限り動かせる」という対称側も持つ。 agent が `inbox/` から `outbox/` に運んできた symlink を後から**別の場所に動かし直す** (do-over) ためには、 agent 自身がその symlink の owner である必要がある。そこで `create` の末尾で `scripts/docker-helper.sh` 経由の短命な root コンテナを 1 つ叩いて `chown -Rh <agent_uid>:<agent_gid> inbox/` を実行し、 `inbox/` 配下の symlink をすべて agent UID にハンドオフする。 `rename(2)` は owner を保存するので、 `mv inbox/foo.flac outbox/music/...` としても owner は agent のままで、あとから `mv` で別の場所に動かし直せる。
+**所有権ハンドオフ**: sticky bit enforcement は「所有者である限り動かせる」という対称側も持つ。 agent が `inbox/` から `outbox/` に運んできた symlink を後から**別の場所に動かし直す** (do-over) ためには、 agent 自身がその symlink の owner である必要がある。そこで `create` の末尾で `scripts/docker-helper.sh` 経由の短命な root コンテナを叩き、まず `data/` 全体を `guard_uid:guard_gid` に寄せてから、 `inbox/` と `home/agent/` を `agent_uid:agent_gid` にハンドオフする。 `rename(2)` は owner を保存するので、 `mv inbox/foo.flac outbox/music/...` としても owner は agent のままで、あとから `mv` で別の場所に動かし直せる。
 
 この結果、 agent が「動かしていいのは自分で持ち込んだ symlink だけ」という不変条件が機構的に保証され、 agent 側に target prefix を見て判断させる必要がなくなる。また、配置の do-over も何度でもできる。
 
-harness UID と agent UID は**別にする**必要がある。 sticky bit は「 root か owner なら動かせる」という仕様なので、 agent コンテナを harness と同じ UID で動かしてしまうと B-mirror の保護が効かない。既定では harness = 現在の host user、 agent = 10000 として分離する。
+guard UID と agent UID は**別にする**必要がある。 sticky bit は「 root か owner なら動かせる」という仕様なので、 agent コンテナを guard と同じ UID で動かしてしまうと B-mirror の保護が効かない。既定では agent = 現在の host user、 guard = 65534 として分離する。これにより agent が作った配置物は host 側で手動編集しやすく、B mirror の初期構造だけを guard で守れる。
 
 実 A/実 B は Docker 側で read-only マウントされるため、 agent が symlink を follow して書き込みしようとしても EROFS で弾かれる。
 
@@ -157,7 +157,7 @@ runner は上記だけを使って `docker run` を組み立て、 container の
 
 `running` は Docker など特定の runtime ではなく、 `REHEARSE_SESSION_RUN_LOCK` の `flock` から導出する。 runner が lock を握っている間だけ `status` / `commit` / `purge` は session を実行中として扱う。プロセス終了時には OS が lock を解放するため、 `Ctrl+C` や runner crash の後に stale な `running` が残らない。
 
-これらの `REHEARSE_AGENT_*` は harness と runner の内部契約であり、ユーザー向け設定ではない。ユーザーは `$REHEARSE_ROOT/profiles/<name>.json` に `agent` / `agent_image` / `agent_uid` / `agent_timeout` などを書き、 `rehearse create -p <name> ...` で session に転記する。
+これらの `REHEARSE_AGENT_*` は harness と runner の内部契約であり、ユーザー向け設定ではない。ユーザーは `$REHEARSE_ROOT/profiles/<name>.json` に `agent` / `agent_image` / `agent_uid` / `guard_uid` / `agent_timeout` などを書き、 `rehearse create -p <name> ...` で session に転記する。 guard UID/GID は create 時の ownership setup にだけ使い、 runner には渡さない。
 
 provider API key のような agent process 用の環境変数は runner から pass-through しない。 skeleton に `.rehearse/agent/init.sh` を置くと、 entrypoint が agent CLI 起動前に source する。これにより `.codex/config.toml` や Claude Code の home 配下設定と、 `OPENROUTER_API_KEY` のような provider 固有設定を同じ skeleton に閉じ込められる。`init.sh` は通常の shell script なので、agent process に渡したい値は `export` する。
 

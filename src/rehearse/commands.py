@@ -69,6 +69,14 @@ def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
 
     mirror.build_workspace_data(data_dir, a, b)
 
+    docker.chown_container(
+        session_dir,
+        data_dir,
+        effective_profile,
+        uid=effective_profile.guard_uid,
+        gid=effective_profile.guard_gid,
+    )
+
     agent_home = session_dir / "home" / "agent"
     agent_home.mkdir(parents=True)
     try:
@@ -81,6 +89,8 @@ def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
         session_dir,
         [data_dir / "inbox", agent_home],
         effective_profile,
+        uid=effective_profile.agent_uid,
+        gid=effective_profile.agent_gid,
     )
 
     subprocess.run(

@@ -206,7 +206,13 @@ def test_chown_container_invokes_docker_helper(
     inbox = workspace / "data" / "inbox"
     home = workspace / "home" / "agent"
 
-    docker.chown_container(workspace, [inbox, home], profile)
+    docker.chown_container(
+        workspace,
+        [inbox, home],
+        profile,
+        uid=12345,
+        gid=23456,
+    )
 
     env = _parse_env(Path(f"{dump}.env"))
     argv = Path(f"{dump}.argv").read_text().splitlines()
@@ -215,7 +221,7 @@ def test_chown_container_invokes_docker_helper(
     assert argv == [
         "chown",
         "-Rh",
-        f"{config.DEFAULT_AGENT_UID}:{config.DEFAULT_AGENT_GID}",
+        "12345:23456",
         str(inbox),
         str(home),
     ]
