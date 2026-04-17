@@ -186,20 +186,6 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
     return 0 if meta.status == SessionStatus.done else 1
 
 
-# ---- discard -----------------------------------------------------------
-
-def cmd_discard(session_id: str) -> int:
-    session_dir = _resolve_session_dir(session_id)
-    meta = read_meta(session_dir)
-    status = _status_for_guards(session_dir, meta)
-    if status == SessionStatus.running:
-        print("cannot discard a running session", file=sys.stderr)
-        return 2
-    meta.status = SessionStatus.discarded
-    write_meta(session_dir, meta)
-    return 0
-
-
 # ---- purge -------------------------------------------------------------
 
 def cmd_purge(session_id: str) -> int:

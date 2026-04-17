@@ -122,7 +122,7 @@ Codex CLI や Claude Code は home 配下に認証情報、設定、会話履歴
 - FHS に沿った `/home/agent` を選んだのは、一般的な CLI agent が前提とする「ホームディレクトリらしい場所」と整合させるため
 - ホスト側のパスが `workspace/home/agent` なのは workspace レイアウトの対称性を取るため
 
-コピーは symlink を symlink のまま保つ。 skeleton は雛形で、 session home は独立したコピーなので、 agent が `.codex/auth.json` などを更新しても skeleton 側には書き戻さない。 `discard` は workspace を残すため copied secret も残る。 `purge` で workspace を消すと agent home も一緒に消える。短期セッションでは履歴を後から振り返れるし、長期では `purge` 一発で掃除できる。
+コピーは symlink を symlink のまま保つ。 skeleton は雛形で、 session home は独立したコピーなので、 agent が `.codex/auth.json` などを更新しても skeleton 側には書き戻さない。 workspace は `purge` まで残るため copied secret も残る。 `purge` で workspace を消すと agent home も一緒に消える。短期セッションでは履歴を後から振り返れるし、長期では `purge` 一発で掃除できる。
 
 セッション開始時の git snapshot は `data/` だけを追跡するので、 `home/agent/.codex/auth.json` のような home 配下のファイルは session git repo に入らない。
 
@@ -155,7 +155,7 @@ harness は以下の環境変数を runner にエクスポートする:
 
 runner は上記だけを使って `docker run` を組み立て、 container の exit code を自分の exit code としてそのまま返す。 harness はその数字だけを観察する。
 
-`running` は Docker など特定の runtime ではなく、 `REHEARSE_SESSION_RUN_LOCK` の `flock` から導出する。 runner が lock を握っている間だけ `status` / `commit` / `discard` / `purge` は session を実行中として扱う。プロセス終了時には OS が lock を解放するため、 `Ctrl+C` や runner crash の後に stale な `running` が残らない。
+`running` は Docker など特定の runtime ではなく、 `REHEARSE_SESSION_RUN_LOCK` の `flock` から導出する。 runner が lock を握っている間だけ `status` / `commit` / `purge` は session を実行中として扱う。プロセス終了時には OS が lock を解放するため、 `Ctrl+C` や runner crash の後に stale な `running` が残らない。
 
 これらの `REHEARSE_AGENT_*` は harness と runner の内部契約であり、ユーザー向け設定ではない。ユーザーは `$REHEARSE_ROOT/profiles/<name>.json` に `agent` / `agent_image` / `agent_uid` / `agent_timeout` などを書き、 `rehearse create -p <name> ...` で session に転記する。
 

@@ -1,4 +1,4 @@
-"""End-to-end lifecycle test: create → run → discard → purge + stubs."""
+"""End-to-end lifecycle test: create → run → commit → purge + stubs."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ pytestmark = pytest.mark.docker
 def _hash_tree(root: Path) -> str:
     """Hash of (relpath, content) pairs for regular files under `root`.
 
-    Used to check that discard / purge / run do NOT mutate A or B.
+    Used to check that purge / run do NOT mutate A or B.
     """
     h = hashlib.sha256()
     for path in sorted(root.rglob("*")):

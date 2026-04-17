@@ -192,11 +192,10 @@ def test_cmd_commit_rejects_bad_statuses(
     session_id = capsys.readouterr().out.strip()
     session_dir = config.SESSIONS_DIR / session_id
 
-    for bad_status in (SessionStatus.created, SessionStatus.discarded):
-        meta = read_meta(session_dir)
-        meta.status = bad_status
-        write_meta(session_dir, meta)
-        assert commands.cmd_commit(session_id) == 2
+    meta = read_meta(session_dir)
+    meta.status = SessionStatus.created
+    write_meta(session_dir, meta)
+    assert commands.cmd_commit(session_id) == 2
 
     # Reset for teardown
     meta = read_meta(session_dir)

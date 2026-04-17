@@ -16,7 +16,6 @@ stateDiagram-v2
         failed --> committed : rehearse commit
         committed --> committed : rehearse commit (冪等)
       }
-      runnable --> discarded : rehearse discard
     }
     not_running --> running : rehearse run (追加指示)
     not_running --> [*] : rehearse purge
@@ -31,10 +30,9 @@ stateDiagram-v2
 | `done` | `outbox/.done` が存在する状態で container 正常終了 |
 | `failed` | `outbox/.done` なしで container 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
 | `committed` | `commit` が完了し、実ファイルが A→B に移動済み |
-| `discarded` | `discard` が実行された (実ファイルは無傷、workspace は audit として残る) |
 | `purged` | workspace が物理削除された |
 
-`done` と `failed` の区別は重要。 `done` は「 agent が自分で完了と判断した」正常系。 `failed` は agent が完走しなかった異常系で、レビュー時に扱いを変えることがある。 harness の挙動 (commit/discard/run) は両者で同じなので、状態としては 2 つに畳んでいる。
+`done` と `failed` の区別は重要。 `done` は「 agent が自分で完了と判断した」正常系。 `failed` は agent が完走しなかった異常系で、レビュー時に扱いを変えることがある。 harness の挙動 (commit/run) は両者で同じなので、状態としては 2 つに畳んでいる。
 
 `running` は特殊で、 `meta.json` に永続化する静的状態ではない。 `sessions/<id>/run.lock` が `flock` で保持されている間だけ、コマンドはその session を `running` と見なす。これにより `Ctrl+C`、端末切断、 runner crash などでプロセスが消えれば lock も解放され、次のコマンドが stale な `running` に閉じ込められない。 `meta.json` に `running` が保存されていた場合は不正な session state として扱う。
 
@@ -90,16 +88,10 @@ stateDiagram-v2
 - `meta.json` の status を `committed` に更新
 - 詳細: [commit.md](commit.md)
 
-### `rehearse discard <session>`
-
-- 何もしない (実ファイルは無傷)
-- `meta.json` の status を `discarded` に更新
-- workspace は残る (audit 記録として)
-
 ### `rehearse purge <session>`
 
 - workspace を物理削除
-- どの状態からでも実行可能 (`committed` / `discarded` / エラー終了後 等)
+- どの永続状態からでも実行可能 (`created` / `done` / `failed` / `committed`)
 - 実ファイルへの影響なし
 
 ## 規約: `.done`
@@ -159,7 +151,7 @@ less data/transcript.jsonl     # 判断根拠を遡りたいとき
 - `.FYI.md` や `.done` も実ファイルとして自然に `git status` に出てくる
 - tig / lazygit / gitui / VS Code など、好みのレビュー UI をそのまま使える
 
-納得したら `rehearse commit`、そうでなければ `rehearse discard`。 git リポジトリは rehearse の動作に関与しないので、レビュアーが自由にブランチを切って試しても構わない。
+納得したら `rehearse commit`、不要なら `rehearse purge`。 git リポジトリは rehearse の動作に関与しないので、レビュアーが自由にブランチを切って試しても構わない。
 
 ## コミット後の workspace の姿
 

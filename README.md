@@ -59,7 +59,7 @@ uv run pytest tests/test_lifecycle.py -v  # docker 必須
 bash scripts/build-agent-codex-image.sh
 ```
 
-A と B を適当に作って `create` → `run` → `status` → `discard` → `purge` と一周させる例:
+A と B を適当に作って `create` → `run` → `status` → `commit` → `purge` と一周させる例:
 
 ```bash
 mkdir -p /tmp/fakeA/sub /tmp/fakeB/existing
@@ -74,7 +74,6 @@ uv run rehearse status "$SID"
 ls ~/.local/share/rehearse/sessions/"$SID"/data/outbox/
 (cd ~/.local/share/rehearse/sessions/"$SID" && git status)
 uv run rehearse commit "$SID"         # outbox/ の配置に従って A→B にファイル移動
-uv run rehearse discard "$SID"
 uv run rehearse purge "$SID"
 ```
 
@@ -151,7 +150,7 @@ export PATH="$HOME/bin:$PATH"
 SH
 ```
 
-`.rehearse/agent/init.sh` は agent startup 用の escape hatch で、 provider API key などの secret を含み得る。 `auth.json` と同様に password と同じ扱いにすること。 session の git snapshot は `data/` だけを追跡するため `home/agent/.codex/auth.json` や `home/agent/.rehearse/agent/init.sh` は記録されない。 `discard` は workspace を残すので copied secret も残り、 `purge` で削除される。
+`.rehearse/agent/init.sh` は agent startup 用の escape hatch で、 provider API key などの secret を含み得る。 `auth.json` と同様に password と同じ扱いにすること。 session の git snapshot は `data/` だけを追跡するため `home/agent/.codex/auth.json` や `home/agent/.rehearse/agent/init.sh` は記録されない。 workspace は `purge` まで残るので copied secret も残り、 `purge` で削除される。
 
 ## 環境変数
 
@@ -214,7 +213,6 @@ docker run --rm --user 0:0 \
 ## バックログ
 
 - 仕様変更
-  - 🎯 `rehearse discard` の廃止
   - 🎯 `~/.rehearse` を既定の `$REHEARSE_ROOT` にする
   - 🎯 コンテナとホストで同一の UID/GID を禁止
   - 🎯 システムプロンプトをカスタム指示に含めない

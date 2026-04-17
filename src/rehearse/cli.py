@@ -29,9 +29,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("-m", "--message", default=None,
                        help="message to pass to the agent")
 
-    p_discard = sub.add_parser("discard", help="mark a session as discarded")
-    p_discard.add_argument("session_id")
-
     p_purge = sub.add_parser("purge", help="delete a session workspace")
     p_purge.add_argument("session_id")
 
@@ -56,8 +53,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             return commands.cmd_status(args.session_id)
         case "run":
             return commands.cmd_run(args.session_id, message=args.message)
-        case "discard":
-            return commands.cmd_discard(args.session_id)
         case "purge":
             return commands.cmd_purge(args.session_id)
         case "commit":

@@ -16,7 +16,6 @@ class SessionStatus(str, Enum):
     done = "done"
     failed = "failed"
     committed = "committed"
-    discarded = "discarded"
 
 
 class SessionMeta(BaseModel):
