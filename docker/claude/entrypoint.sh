@@ -11,8 +11,6 @@ if [ -f "${agent_init}" ]; then
   . "${agent_init}"
 fi
 
-: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"
-
 cd "${REHEARSE_WORKSPACE_DATA:-/workspace/data}"
 
 args=(
