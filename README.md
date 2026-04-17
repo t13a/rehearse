@@ -211,9 +211,22 @@ docker run --rm --user 0:0 \
   rm -rf "$HOME/.local/share/rehearse/sessions"
 ```
 
-## 現在の実装状況
+## バックログ
 
-- ✅ Step 1: agent プロンプト ([prompts/agent.md](prompts/agent.md))
-- ✅ Step 2: 最小ハーネスのコード
-- ✅ Step 3: Dockerfile + Codex CLI / Claude Code 起動 + skeleton 設定
-- ✅ Step 4: commit アルゴリズム
+- 仕様変更
+  - 🎯 ホストの環境変数をコンテナに透過させない
+  - 🎯 `rehearse discard` の廃止
+  - 🎯 `~/.rehearse` を既定の `$REHEARSE_ROOT` にする
+  - 🎯 コンテナとホストで同一の UID/GID を禁止
+  - 🎯 システムプロンプトをカスタム指示に含めない
+  - 🎯 システムプロンプトを差し替え可能にする (コンテナイメージに含めない)
+- 機能追加
+  - 🎯 デバッグ (`rehearse debug SID CMD ARG...`)
+  - 🎯 名前付きセッション (`rehearse create -s SID`)
+  - 🎯 一括削除 (`rehearse purge SID1 SID2...`)
+  - 🎯 Gemini CLI に対応する
+  - 🎯 OpenCode に対応する
+- リリース準備
+  - 🎯 `LICENSE` を追加する
+  - 🎯 CLI をパッケージ化 (またはコンテナ化) する
+  - 🎯 GitHub Actions で各種コンテナイメージをビルド・プッシュする (Claude Code 以外)
