@@ -72,7 +72,7 @@ stateDiagram-v2
   ```bash
   rehearse run 1744296235 -m "ジャズは year/artist ではなく label/catalog 順で並べて"
   ```
-- 省略時はデフォルトメッセージが使われる
+- 省略時は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` が使われる。恒久的な作業指示は `data/AGENTS.md` に置かれ、agent-native な discovery に任せる
 
 ### `rehearse status [<session>]`
 

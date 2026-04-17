@@ -34,6 +34,7 @@ class RawProfile(BaseModel):
     agent_image: str | None = None
     helper_image: str | None = None
     agent_runner: Path | None = None
+    agent_instructions: Path | None = None
     agent_timeout: int | None = None
     agent_extra_args: str | None = None
     skeleton: str | None = None
@@ -55,6 +56,7 @@ class EffectiveProfile(BaseModel):
     agent_image: str
     helper_image: str
     agent_runner: Path
+    agent_instructions: Path
     agent_timeout: int
     agent_extra_args: str | None
     skeleton: str
@@ -122,6 +124,10 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
         config.DEFAULT_AGENT_RUNNER if profile.agent_runner is None
         else _resolve_root_relative(profile.agent_runner)
     )
+    agent_instructions = (
+        config.DEFAULT_AGENT_INSTRUCTIONS if profile.agent_instructions is None
+        else _resolve_root_relative(profile.agent_instructions)
+    )
     skeleton = "default" if profile.skeleton is None else profile.skeleton
     validate_name(skeleton)
     agent_uid = (
@@ -154,6 +160,7 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
             else profile.helper_image
         ),
         agent_runner=agent_runner,
+        agent_instructions=agent_instructions,
         agent_timeout=(
             config.DEFAULT_AGENT_TIMEOUT
             if profile.agent_timeout is None

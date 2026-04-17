@@ -12,10 +12,9 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && npm install -g @openai/codex
 
-RUN mkdir -p /opt/rehearse/prompts /home/agent/.codex
+RUN mkdir -p /home/agent/.codex
 
 COPY docker/codex/entrypoint.sh /opt/rehearse/entrypoint.sh
-COPY prompts/agent.md /opt/rehearse/prompts/agent.md
 RUN chmod +x /opt/rehearse/entrypoint.sh
 
 # Strip the forbidden tools last so the deletion of `rm` itself happens in a

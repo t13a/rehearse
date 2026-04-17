@@ -161,6 +161,8 @@ runner は上記だけを使って `docker run` を組み立て、 container の
 
 provider API key のような agent process 用の環境変数は runner から pass-through しない。 skeleton に `.rehearse/agent/init.sh` を置くと、 entrypoint が agent CLI 起動前に source する。これにより `.codex/config.toml` や Claude Code の home 配下設定と、 `OPENROUTER_API_KEY` のような provider 固有設定を同じ skeleton に閉じ込められる。`init.sh` は通常の shell script なので、agent process に渡したい値は `export` する。
 
+恒久的な agent instructions は container image には焼き込まない。 `rehearse create` が profile の `agent_instructions` を `data/AGENTS.md` にコピーし、Claude Code 互換の `data/CLAUDE.md -> AGENTS.md` も作る。 entrypoint が agent CLI に渡す prompt は、 `run -m` のカスタム指示か、初回/継続を示す短い既定指示だけにする。
+
 ### timeout の扱い
 
 runner が組み立てる image の entrypoint は `timeout --kill-after=10 ${REHEARSE_AGENT_TIMEOUT} <agent-cli> ...` で agent CLI を包む。

@@ -51,6 +51,24 @@ def test_agent_defaults_to_codex(
     assert explicit_null.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
 
 
+def test_agent_instructions_defaults_to_repo_default(
+    rehearse_root: Path,
+) -> None:
+    effective = profile.effective_profile({})
+
+    assert effective.agent_instructions == config.DEFAULT_AGENT_INSTRUCTIONS
+
+
+def test_agent_instructions_relative_path_resolves_from_rehearse_root(
+    rehearse_root: Path,
+) -> None:
+    effective = profile.effective_profile(
+        {"agent_instructions": "instructions/custom.md"}
+    )
+
+    assert effective.agent_instructions == rehearse_root / "instructions" / "custom.md"
+
+
 def test_uid_gid_defaults_to_host_agent_and_nobody_guard(
     rehearse_root: Path,
 ) -> None:
@@ -167,11 +185,13 @@ def test_relative_paths_resolve_from_rehearse_root(
 ) -> None:
     raw = {
         "agent_runner": "bin/runner.sh",
+        "agent_instructions": "instructions/custom.md",
     }
 
     effective = profile.effective_profile(raw)
 
     assert effective.agent_runner == rehearse_root / "bin" / "runner.sh"
+    assert effective.agent_instructions == rehearse_root / "instructions" / "custom.md"
 
 
 def test_skeleton_defaults_to_default(

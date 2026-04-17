@@ -42,6 +42,11 @@ def test_create_builds_workspace(
     # outbox/ mirrors B
     assert (data / "outbox" / "existing" / "old.txt").is_symlink()
 
+    assert (data / "AGENTS.md").is_file()
+    assert (data / "AGENTS.md").read_text() == config.DEFAULT_AGENT_INSTRUCTIONS.read_text()
+    assert (data / "CLAUDE.md").is_symlink()
+    assert os.readlink(data / "CLAUDE.md") == "AGENTS.md"
+
     # inbox/ symlink target points via data/refs/a/...
     inbox_link = data / "inbox" / "file1.txt"
     target = os.readlink(inbox_link)
@@ -60,6 +65,12 @@ def test_create_builds_workspace(
     outbox_link_stat = os.lstat(data / "outbox" / "existing" / "old.txt")
     assert outbox_link_stat.st_uid == config.DEFAULT_GUARD_UID
     assert outbox_link_stat.st_gid == config.DEFAULT_GUARD_GID
+    agents_stat = os.lstat(data / "AGENTS.md")
+    assert agents_stat.st_uid == config.DEFAULT_GUARD_UID
+    assert agents_stat.st_gid == config.DEFAULT_GUARD_GID
+    claude_stat = os.lstat(data / "CLAUDE.md")
+    assert claude_stat.st_uid == config.DEFAULT_GUARD_UID
+    assert claude_stat.st_gid == config.DEFAULT_GUARD_GID
 
     # inbox/ symlinks owned by agent UID after chown handoff
     c_stat = os.lstat(inbox_link)
@@ -77,6 +88,14 @@ def test_create_builds_workspace(
 
     # git snapshot exists
     assert (session_dir / ".git").is_dir()
+    tracked = subprocess.run(
+        ["git", "-C", str(session_dir), "ls-files"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    assert "data/AGENTS.md" in tracked
+    assert "data/CLAUDE.md" in tracked
 
 
 def test_create_uses_named_profile(
@@ -205,6 +224,44 @@ def test_create_auto_creates_default_skeleton(
 
     capsys.readouterr()
     assert default.is_dir()
+
+
+def test_create_copies_custom_agent_instructions(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    instructions = config.REHEARSE_ROOT / "instructions" / "custom.md"
+    instructions.parent.mkdir(parents=True)
+    instructions.write_text("# Custom instructions\n")
+    custom = config.PROFILES_DIR / "custom-instructions.json"
+    custom.write_text('{"agent_instructions": "instructions/custom.md"}\n')
+
+    assert commands.cmd_create(str(a), str(b), profile_name="custom-instructions") == 0
+
+    session_id = capsys.readouterr().out.strip()
+    data = config.SESSIONS_DIR / session_id / "data"
+    assert (data / "AGENTS.md").read_text() == "# Custom instructions\n"
+
+    instructions.write_text("# Changed instructions\n")
+    assert (data / "AGENTS.md").read_text() == "# Custom instructions\n"
+
+
+def test_create_rejects_missing_agent_instructions(
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    custom = config.PROFILES_DIR / "missing-instructions.json"
+    custom.write_text('{"agent_instructions": "instructions/missing.md"}\n')
+
+    rc = commands.cmd_create(str(a), str(b), profile_name="missing-instructions")
+
+    assert rc == 2
+    assert "agent instructions not found" in capsys.readouterr().err
 
 
 def test_create_rejects_missing_profile(

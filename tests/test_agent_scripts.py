@@ -195,7 +195,6 @@ def test_codex_entrypoint_runs_exec_with_stdin_prompt(
             "REHEARSE_AGENT_TIMEOUT": "5",
             "REHEARSE_AGENT_MESSAGE": "sort files",
             "REHEARSE_AGENT_EXTRA_ARGS": "--oss",
-            "REHEARSE_AGENT_PROMPT_PATH": str(REPO_ROOT / "prompts" / "agent.md"),
         }
     )
 
@@ -220,7 +219,7 @@ def test_codex_entrypoint_runs_exec_with_stdin_prompt(
         "never",
         "-",
     ]
-    assert "sort files" in stdin_dump.read_text()
+    assert stdin_dump.read_text() == "sort files\n"
 
 
 def test_codex_entrypoint_sources_agent_init(
@@ -254,7 +253,6 @@ def test_codex_entrypoint_sources_agent_init(
             "HOME": str(home_root),
             "REHEARSE_WORKSPACE_DATA": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
-            "REHEARSE_AGENT_PROMPT_PATH": str(REPO_ROOT / "prompts" / "agent.md"),
         }
     )
 
@@ -285,7 +283,6 @@ def test_codex_entrypoint_fails_when_agent_init_fails(
             "HOME": str(home_root),
             "REHEARSE_WORKSPACE_DATA": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
-            "REHEARSE_AGENT_PROMPT_PATH": str(REPO_ROOT / "prompts" / "agent.md"),
         }
     )
 
@@ -305,11 +302,12 @@ def test_codex_entrypoint_resumes_existing_session(
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     argv_dump = tmp_path / "codex.argv"
+    stdin_dump = tmp_path / "codex.stdin"
     _write_executable(
         bin_dir / "codex",
         "#!/bin/bash\n"
         "printf '%s\\n' \"$@\" > \"$CODEX_ARGV_DUMP\"\n"
-        "cat >/dev/null\n",
+        "cat > \"$CODEX_STDIN_DUMP\"\n",
     )
 
     data = tmp_path / "data"
@@ -323,11 +321,11 @@ def test_codex_entrypoint_resumes_existing_session(
         {
             "PATH": f"{bin_dir}:{env['PATH']}",
             "CODEX_ARGV_DUMP": str(argv_dump),
+            "CODEX_STDIN_DUMP": str(stdin_dump),
             "CODEX_HOME": str(home),
             "HOME": str(tmp_path / "home"),
             "REHEARSE_WORKSPACE_DATA": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
-            "REHEARSE_AGENT_PROMPT_PATH": str(REPO_ROOT / "prompts" / "agent.md"),
         }
     )
 
@@ -347,6 +345,101 @@ def test_codex_entrypoint_resumes_existing_session(
         "resume",
         "--last",
         "--dangerously-bypass-approvals-and-sandbox",
+    ]
+    assert stdin_dump.read_text() == "作業を再開してください。\n"
+
+
+def test_claude_entrypoint_runs_with_custom_message(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    argv_dump = tmp_path / "claude.argv"
+    _write_executable(
+        bin_dir / "claude",
+        "#!/bin/bash\n"
+        "printf '%s\\n' \"$@\" > \"$CLAUDE_ARGV_DUMP\"\n",
+    )
+
+    data = tmp_path / "data"
+    data.mkdir()
+    home_root = tmp_path / "home"
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "CLAUDE_ARGV_DUMP": str(argv_dump),
+            "ANTHROPIC_API_KEY": "sk-ant-test",
+            "HOME": str(home_root),
+            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_TIMEOUT": "5",
+            "REHEARSE_AGENT_MESSAGE": "sort files",
+        }
+    )
+
+    result = subprocess.run(
+        [str(REPO_ROOT / "docker" / "claude" / "entrypoint.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    argv = argv_dump.read_text().splitlines()
+    assert "--append-system-prompt" not in argv
+    assert argv == [
+        "--print",
+        "--permission-mode",
+        "bypassPermissions",
+        "sort files",
+    ]
+
+
+def test_claude_entrypoint_continues_with_resume_message(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    argv_dump = tmp_path / "claude.argv"
+    _write_executable(
+        bin_dir / "claude",
+        "#!/bin/bash\n"
+        "printf '%s\\n' \"$@\" > \"$CLAUDE_ARGV_DUMP\"\n",
+    )
+
+    data = tmp_path / "data"
+    data.mkdir()
+    home_root = tmp_path / "home"
+    project_dir = home_root / ".claude" / "projects" / "session"
+    project_dir.mkdir(parents=True)
+    (project_dir / "history.jsonl").write_text("{}\n")
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "CLAUDE_ARGV_DUMP": str(argv_dump),
+            "ANTHROPIC_API_KEY": "sk-ant-test",
+            "HOME": str(home_root),
+            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_TIMEOUT": "5",
+        }
+    )
+
+    result = subprocess.run(
+        [str(REPO_ROOT / "docker" / "claude" / "entrypoint.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    argv = argv_dump.read_text().splitlines()
+    assert argv == [
+        "--print",
+        "--permission-mode",
+        "bypassPermissions",
+        "--continue",
+        "作業を再開してください。",
     ]
 
 
@@ -378,7 +471,6 @@ def test_claude_entrypoint_sources_agent_init_before_key_check(
             "HOME": str(home_root),
             "REHEARSE_WORKSPACE_DATA": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
-            "REHEARSE_AGENT_PROMPT_PATH": str(REPO_ROOT / "prompts" / "agent.md"),
         }
     )
 

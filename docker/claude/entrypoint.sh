@@ -18,11 +18,13 @@ cd "${REHEARSE_WORKSPACE_DATA:-/workspace/data}"
 args=(
   --print
   --permission-mode bypassPermissions
-  --append-system-prompt "$(cat "${REHEARSE_AGENT_PROMPT_PATH:-/opt/rehearse/prompts/agent.md}")"
 )
 
 if ls "$HOME/.claude/projects/"*/*.jsonl >/dev/null 2>&1; then
   args+=(--continue)
+  prompt="${REHEARSE_AGENT_MESSAGE:-作業を再開してください。}"
+else
+  prompt="${REHEARSE_AGENT_MESSAGE:-作業を開始してください。}"
 fi
 
 if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then
@@ -30,8 +32,6 @@ if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then
   # shellcheck disable=SC2206
   args+=(${REHEARSE_AGENT_EXTRA_ARGS})
 fi
-
-prompt="${REHEARSE_AGENT_MESSAGE:-作業を開始してください。仕様はシステムプロンプト (/opt/rehearse/prompts/agent.md) にあります。}"
 
 TIMEOUT="${REHEARSE_AGENT_TIMEOUT:-3600}"
 

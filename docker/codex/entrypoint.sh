@@ -28,17 +28,14 @@ if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then
   exec_args+=(${REHEARSE_AGENT_EXTRA_ARGS})
 fi
 
-prompt_path="${REHEARSE_AGENT_PROMPT_PATH:-/opt/rehearse/prompts/agent.md}"
-system_prompt="$(cat "${prompt_path}")"
-user_prompt="${REHEARSE_AGENT_MESSAGE:-作業を開始してください。仕様は上記の指示にあります。}"
-prompt="${system_prompt}"$'\n\n'"${user_prompt}"
-
 TIMEOUT="${REHEARSE_AGENT_TIMEOUT:-3600}"
 
 if find "${CODEX_HOME:-$HOME/.codex}/sessions" -type f -name "*.jsonl" -print -quit 2>/dev/null | grep -q .; then
   command=(codex "${global_args[@]}" exec resume --last --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -)
+  prompt="${REHEARSE_AGENT_MESSAGE:-作業を再開してください。}"
 else
   command=(codex "${global_args[@]}" exec "${exec_args[@]}" --color never -)
+  prompt="${REHEARSE_AGENT_MESSAGE:-作業を開始してください。}"
 fi
 
 # `timeout` returns 124 on SIGTERM and 137 on SIGKILL; the harness keys off

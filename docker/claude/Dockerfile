@@ -11,10 +11,9 @@ RUN apt-get update \
  && ln -s /usr/local/share/claude/versions/* /usr/local/bin/claude \
  && rm -rf /root/.claude /root/.local
 
-RUN mkdir -p /opt/rehearse/prompts /home/agent
+RUN mkdir -p /home/agent
 
 COPY docker/claude/entrypoint.sh /opt/rehearse/entrypoint.sh
-COPY prompts/agent.md /opt/rehearse/prompts/agent.md
 RUN chmod +x /opt/rehearse/entrypoint.sh
 
 # Strip the forbidden tools last so the deletion of `rm` itself happens in a

@@ -40,6 +40,13 @@ def _status_for_guards(session_dir: Path, meta: SessionMeta) -> SessionStatus:
     return meta.status
 
 
+def _install_agent_instructions(data_dir: Path, source: Path) -> None:
+    if not source.is_file():
+        raise profile_mod.ProfileError(f"agent instructions not found: {source}")
+    (data_dir / "AGENTS.md").write_text(source.read_text())
+    (data_dir / "CLAUDE.md").symlink_to("AGENTS.md")
+
+
 # ---- create ------------------------------------------------------------
 
 def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
@@ -68,6 +75,11 @@ def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
     data_dir.mkdir(parents=True, exist_ok=True)
 
     mirror.build_workspace_data(data_dir, a, b)
+    try:
+        _install_agent_instructions(data_dir, effective_profile.agent_instructions)
+    except profile_mod.ProfileError as e:
+        print(f"profile failed: {e}", file=sys.stderr)
+        return 2
 
     docker.chown_container(
         session_dir,

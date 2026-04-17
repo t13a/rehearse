@@ -103,6 +103,7 @@ profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile
   "agent_gid": 1000,
   "guard_uid": 65534,
   "guard_gid": 65534,
+  "agent_instructions": "instructions/music.md",
   "agent_timeout": 3600,
   "agent_extra_args": "--output-format stream-json --verbose",
   "skeleton": "codex"
@@ -119,9 +120,24 @@ profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile
 | `agent_image` | `rehearse-agent-codex:latest` | agent コンテナの image。 `agent` の標準値を上書きする |
 | `helper_image` | `busybox:latest` | `scripts/docker-helper.sh` が chown / cleanup に使う root コンテナ image |
 | `agent_runner` | `<repo>/scripts/docker-runner.sh` | agent image を起動する runner。 Podman 等に差し替える場合に上書きする |
+| `agent_instructions` | `<repo>/instructions/default.md` | session 作成時に `data/AGENTS.md` へコピーする agent instructions。相対パスは `$REHEARSE_ROOT` 起点 |
 | `agent_timeout` | `3600` | container 内で `timeout` が agent CLI に与える秒数 |
 | `agent_extra_args` | `null` | agent CLI に渡す追加引数 (スペース区切り) |
 | `skeleton` | `default` | `sessions/<id>/home/agent/` にコピーする home skeleton 名 |
+
+## Agent instructions
+
+agent への恒久的な作業指示は、session 作成時に `data/AGENTS.md` としてコピーされる。Claude Code 互換のため、同じ場所に `CLAUDE.md -> AGENTS.md` の相対 symlink も作る。Codex / Claude Code には instructions の内容を prompt として渡さず、各 agent の native な discovery に任せる。
+
+既定では repo 内の `instructions/default.md` を使う。用途ごとに差し替える場合は `$REHEARSE_ROOT` 配下に instructions file を置き、profile の `agent_instructions` で指定する:
+
+```json
+{
+  "agent_instructions": "instructions/music.md"
+}
+```
+
+`rehearse run -m ...` で渡すのは、その実行に限ったカスタム指示だけ。 `-m` を省略した場合、entrypoint は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` という短い既定指示だけを agent CLI に渡す。
 
 ## Home skeleton
 
@@ -218,8 +234,6 @@ docker run --rm --user 0:0 \
 
 - 仕様変更
   - 🎯 `~/.rehearse` を既定の `$REHEARSE_ROOT` にする
-  - 🎯 システムプロンプトをカスタム指示に含めない
-  - 🎯 システムプロンプトを差し替え可能にする (コンテナイメージに含めない)
 - 機能追加
   - 🎯 デバッグ (`rehearse debug SID CMD ARG...`)
   - 🎯 名前付きセッション (`rehearse create -s SID`)
