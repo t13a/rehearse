@@ -28,6 +28,10 @@ def _now() -> datetime:
 
 
 def _resolve_session_dir(session_id: str) -> Path:
+    try:
+        workspace.validate_session_id(session_id)
+    except workspace.SessionIdError as e:
+        raise SystemExit(str(e)) from e
     path = workspace.session_path(session_id)
     if not path.exists():
         raise SystemExit(f"session not found: {session_id}")
@@ -49,7 +53,13 @@ def _install_agent_instructions(data_dir: Path, source: Path) -> None:
 
 # ---- create ------------------------------------------------------------
 
-def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
+def cmd_create(
+    a_arg: str,
+    b_arg: str,
+    *,
+    profile_name: str = "default",
+    session_id: str | None = None,
+) -> int:
     a = Path(a_arg).resolve()
     b = Path(b_arg).resolve()
 
@@ -69,7 +79,15 @@ def cmd_create(a_arg: str, b_arg: str, *, profile_name: str = "default") -> int:
 
     workspace.ensure_root_dirs()
 
-    session_id = workspace.allocate_session_id()
+    try:
+        session_id = (
+            workspace.allocate_session_id()
+            if session_id is None
+            else workspace.allocate_named_session_id(session_id)
+        )
+    except workspace.SessionIdError as e:
+        print(f"session failed: {e}", file=sys.stderr)
+        return 2
     session_dir = workspace.session_path(session_id)
     data_dir = session_dir / "data"
     data_dir.mkdir(parents=True, exist_ok=True)

@@ -21,7 +21,7 @@
     └── agent_stdout.log     # エージェントの stdout
 ```
 
-`<session-id>` は UNIX 秒 (`1744296235` のような 10 桁文字列)。ソート可能で短いので、 symlink target に繰り返し現れても agent の入力トークンやレビュー負荷を圧迫しない。秒内衝突は `flock` で検知して再試行する。
+`<session-id>` は既定では UNIX 秒 (`1744296235` のような 10 桁文字列)。ソート可能で短いので、 symlink target に繰り返し現れても agent の入力トークンやレビュー負荷を圧迫しない。秒内衝突は `mkdir(2)` の atomicity で検知して +1 retry する。`rehearse create -s SID` を使うと任意の名前付き session id を指定できる。使える文字は profile 名と同じ英数字、 `_`、`-`、`.` で、既存 session との衝突時は上書きせず失敗する。
 
 ## ディレクトリの役割
 
@@ -221,7 +221,7 @@ agent ごとの小さなヘルパーや provider 固有の環境変数は image 
 
 `commit` は実ファイルを B に対して `rename(2)` するので、同じ B に対する並行 commit は衝突する可能性がある。そこで `commit` 開始時に `${REHEARSE_ROOT}/locks/b-<hash>.lock` を `flock` で排他取得する (advisory なので rehearse プロセス同士のみ対象、外部プログラムや agent は無関係)。
 
-`create` / `run` は B を read-only でしか触らないのでロックは取らない。 session id の採番は `mkdir(2)` の atomicity に任せて、 EEXIST なら +1 で retry する (flock 不要)。
+`create` / `run` は B を read-only でしか触らないのでロックは取らない。自動 session id の採番は `mkdir(2)` の atomicity に任せて、 EEXIST なら +1 で retry する。名前付き session id は同じく `mkdir(2)` で衝突検出し、既存なら retry せず失敗する (flock 不要)。
 
 ## セッション開始時フック: git によるレビュー用スナップショット
 

@@ -40,11 +40,12 @@ stateDiagram-v2
 
 ハーネスが提供する CLI:
 
-### `rehearse create [-p <profile>] <A> <B>`
+### `rehearse create [-p <profile>] [-s <session>] <A> <B>`
 
 - 新しい workspace を作成
 - `$REHEARSE_ROOT/profiles/<profile>.json` を読み込み、 raw profile を `meta.json` に転記
 - `-p` 未指定時は `default`。 `profiles/default.json` がなければ `{}` で自動作成
+- `-s` 指定時はその値を session id として使う。未指定時は UNIX 秒ベースで自動採番
 - profile の `skeleton` で指定された `$REHEARSE_ROOT/skeletons/<name>/` を `home/agent/` にコピー。未指定時は `default`。 `skeletons/default/` がなければ空ディレクトリで自動作成
 - `data/` 配下に `refs/{a,b}` symlink、`inbox/`, `outbox/` を構築
 - `meta.json` を書き出し

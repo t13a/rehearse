@@ -11,6 +11,11 @@ from pathlib import Path
 from typing import Iterator
 
 from rehearse import config
+from rehearse.profile import PROFILE_NAME_RE
+
+
+class SessionIdError(RuntimeError):
+    """Raised when a requested session id is invalid or unavailable."""
 
 
 def sessions_dir() -> Path:
@@ -36,6 +41,15 @@ def run_lock_path(session_dir: Path) -> Path:
 def ensure_root_dirs() -> None:
     sessions_dir().mkdir(parents=True, exist_ok=True)
     locks_dir().mkdir(parents=True, exist_ok=True)
+
+
+def validate_session_id(session_id: str) -> None:
+    if not PROFILE_NAME_RE.fullmatch(session_id):
+        raise SessionIdError(
+            "invalid session id: use only letters, digits, '_', '-', and '.'"
+        )
+    if session_id in (".", ".."):
+        raise SessionIdError("invalid session id: must not be '.' or '..'")
 
 
 @contextmanager
@@ -94,3 +108,14 @@ def allocate_session_id() -> str:
             return str(candidate)
         except FileExistsError:
             candidate += 1
+
+
+def allocate_named_session_id(session_id: str) -> str:
+    """Allocate a caller-provided session id without retrying on collision."""
+    validate_session_id(session_id)
+    ensure_root_dirs()
+    try:
+        session_path(session_id).mkdir(parents=True)
+    except FileExistsError as e:
+        raise SessionIdError(f"session already exists: {session_id}") from e
+    return session_id

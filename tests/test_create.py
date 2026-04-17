@@ -118,6 +118,54 @@ def test_create_uses_named_profile(
     assert meta.profile == {"agent_image": "busybox:latest", "agent_timeout": 42}
 
 
+def test_create_uses_named_session_id(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+
+    rc = commands.cmd_create(str(a), str(b), session_id="safe_1.2-3")
+
+    assert rc == 0
+    assert capsys.readouterr().out.strip() == "safe_1.2-3"
+    session_dir = config.SESSIONS_DIR / "safe_1.2-3"
+    assert session_dir.is_dir()
+    assert read_meta(session_dir).session_id == "safe_1.2-3"
+
+
+@pytest.mark.parametrize("session_id", ["", "../bad", "bad/name", "bad name", ".", ".."])
+def test_create_rejects_invalid_named_session_id(
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+    session_id: str,
+) -> None:
+    a, b = fake_ab
+
+    rc = commands.cmd_create(str(a), str(b), session_id=session_id)
+
+    assert rc == 2
+    assert "invalid session id" in capsys.readouterr().err
+
+
+def test_create_rejects_existing_named_session_id(
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    existing = config.SESSIONS_DIR / "taken"
+    existing.mkdir(parents=True)
+
+    rc = commands.cmd_create(str(a), str(b), session_id="taken")
+
+    assert rc == 2
+    assert "session already exists: taken" in capsys.readouterr().err
+    assert list(existing.iterdir()) == []
+
+
 def test_create_copies_named_skeleton(
     docker_available: bool,
     rehearse_root: Path,

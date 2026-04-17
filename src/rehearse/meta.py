@@ -9,6 +9,8 @@ from typing import Any
 
 from pydantic import BaseModel, field_validator
 
+from rehearse.workspace import SessionIdError, validate_session_id
+
 
 class SessionStatus(str, Enum):
     created = "created"
@@ -30,6 +32,15 @@ class SessionMeta(BaseModel):
     profile_name: str
     profile: dict[str, Any]
     exit_reason: str | None = None
+
+    @field_validator("session_id")
+    @classmethod
+    def validate_persisted_session_id(cls, value: str) -> str:
+        try:
+            validate_session_id(value)
+        except SessionIdError as e:
+            raise ValueError(str(e)) from e
+        return value
 
     @field_validator("status")
     @classmethod
