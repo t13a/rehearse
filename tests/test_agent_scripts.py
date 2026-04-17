@@ -165,18 +165,16 @@ def test_agent_runners_fail_when_session_lock_is_held(
     assert not docker_called.exists()
 
 
-def test_codex_entrypoint_runs_exec_with_stdin_prompt(
+def test_codex_entrypoint_runs_exec_with_prompt_argument(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     argv_dump = tmp_path / "codex.argv"
-    stdin_dump = tmp_path / "codex.stdin"
     _write_executable(
         bin_dir / "codex",
         "#!/bin/bash\n"
         "printf '%s\\n' \"$@\" > \"$CODEX_ARGV_DUMP\"\n"
-        "cat > \"$CODEX_STDIN_DUMP\"\n",
     )
 
     data = tmp_path / "data"
@@ -188,7 +186,6 @@ def test_codex_entrypoint_runs_exec_with_stdin_prompt(
         {
             "PATH": f"{bin_dir}:{env['PATH']}",
             "CODEX_ARGV_DUMP": str(argv_dump),
-            "CODEX_STDIN_DUMP": str(stdin_dump),
             "CODEX_HOME": str(home),
             "HOME": str(tmp_path / "home"),
             "REHEARSE_WORKSPACE_DATA": str(data),
@@ -210,16 +207,13 @@ def test_codex_entrypoint_runs_exec_with_stdin_prompt(
     assert argv == [
         "--ask-for-approval",
         "never",
-        "exec",
         "--sandbox",
         "danger-full-access",
-        "--skip-git-repo-check",
         "--oss",
-        "--color",
-        "never",
-        "-",
+        "exec",
+        "--skip-git-repo-check",
+        "sort files",
     ]
-    assert stdin_dump.read_text() == "sort files\n"
 
 
 def test_codex_entrypoint_sources_agent_init(
@@ -302,12 +296,10 @@ def test_codex_entrypoint_resumes_existing_session(
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     argv_dump = tmp_path / "codex.argv"
-    stdin_dump = tmp_path / "codex.stdin"
     _write_executable(
         bin_dir / "codex",
         "#!/bin/bash\n"
         "printf '%s\\n' \"$@\" > \"$CODEX_ARGV_DUMP\"\n"
-        "cat > \"$CODEX_STDIN_DUMP\"\n",
     )
 
     data = tmp_path / "data"
@@ -321,11 +313,11 @@ def test_codex_entrypoint_resumes_existing_session(
         {
             "PATH": f"{bin_dir}:{env['PATH']}",
             "CODEX_ARGV_DUMP": str(argv_dump),
-            "CODEX_STDIN_DUMP": str(stdin_dump),
             "CODEX_HOME": str(home),
             "HOME": str(tmp_path / "home"),
             "REHEARSE_WORKSPACE_DATA": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
+            "REHEARSE_AGENT_EXTRA_ARGS": "--oss",
         }
     )
 
@@ -341,12 +333,17 @@ def test_codex_entrypoint_resumes_existing_session(
     assert argv[:6] == [
         "--ask-for-approval",
         "never",
+        "--sandbox",
+        "danger-full-access",
+        "--oss",
         "exec",
+    ]
+    assert argv[6:] == [
         "resume",
         "--last",
-        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        "作業を再開してください。",
     ]
-    assert stdin_dump.read_text() == "作業を再開してください。\n"
 
 
 def test_claude_entrypoint_runs_with_custom_message(

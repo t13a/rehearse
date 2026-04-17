@@ -15,29 +15,25 @@ cd "${REHEARSE_WORKSPACE_DATA:-/workspace/data}"
 
 global_args=(
   --ask-for-approval never
-)
-
-exec_args=(
   --sandbox danger-full-access
-  --skip-git-repo-check
 )
 
 if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then
   # Word-split intentionally: caller passes space-separated flags.
   # shellcheck disable=SC2206
-  exec_args+=(${REHEARSE_AGENT_EXTRA_ARGS})
+  global_args+=(${REHEARSE_AGENT_EXTRA_ARGS})
 fi
 
 TIMEOUT="${REHEARSE_AGENT_TIMEOUT:-3600}"
 
 if find "${CODEX_HOME:-$HOME/.codex}/sessions" -type f -name "*.jsonl" -print -quit 2>/dev/null | grep -q .; then
-  command=(codex "${global_args[@]}" exec resume --last --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check -)
+  command=(codex "${global_args[@]}" exec resume --last --skip-git-repo-check)
   prompt="${REHEARSE_AGENT_MESSAGE:-作業を再開してください。}"
 else
-  command=(codex "${global_args[@]}" exec "${exec_args[@]}" --color never -)
+  command=(codex "${global_args[@]}" exec --skip-git-repo-check)
   prompt="${REHEARSE_AGENT_MESSAGE:-作業を開始してください。}"
 fi
 
 # `timeout` returns 124 on SIGTERM and 137 on SIGKILL; the harness keys off
 # both to recognize a timeout.
-printf '%s\n' "${prompt}" | timeout --kill-after=10 "${TIMEOUT}" "${command[@]}"
+exec timeout --kill-after=10 "${TIMEOUT}" "${command[@]}" "${prompt}"
