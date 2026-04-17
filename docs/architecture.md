@@ -152,8 +152,10 @@ harness は以下の環境変数を runner にエクスポートする:
 | `REHEARSE_AGENT_IMAGE` | 使う image |
 | `REHEARSE_AGENT_UID` / `REHEARSE_AGENT_GID` | container user |
 | `REHEARSE_AGENT_TIMEOUT` | container 内で `timeout` が agent CLI に与える秒数 |
+| `REHEARSE_RUNNER_MODE` | `run` または `debug` |
+| `REHEARSE_DEBUG_ENTRYPOINT` | debug mode で Docker entrypoint にする command |
 
-runner は上記だけを使って `docker run` を組み立て、 container の exit code を自分の exit code としてそのまま返す。 harness はその数字だけを観察する。
+runner は上記だけを使って `docker run` を組み立て、 container の exit code を自分の exit code としてそのまま返す。 harness はその数字だけを観察する。`debug` は同じ runner 契約で agent image を起動し、Docker の entrypoint だけを差し替える。これにより `/bin/bash` で session home を確認したり、`/opt/rehearse/entrypoint.sh` を手動起動して通常 run と同じ経路を再現できる。
 
 `running` は Docker など特定の runtime ではなく、 `REHEARSE_SESSION_RUN_LOCK` の `flock` から導出する。 runner が lock を握っている間だけ `status` / `commit` / `purge` は session を実行中として扱う。プロセス終了時には OS が lock を解放するため、 `Ctrl+C` や runner crash の後に stale な `running` が残らない。
 

@@ -16,8 +16,9 @@ set -euo pipefail
 : "${REHEARSE_AGENT_UID:?required}"
 : "${REHEARSE_AGENT_GID:?required}"
 : "${REHEARSE_AGENT_TIMEOUT:?required}"
+: "${REHEARSE_RUNNER_MODE:?required}"
 
-args=(
+docker_args=(
   docker run --rm
   --user "${REHEARSE_AGENT_UID}:${REHEARSE_AGENT_GID}"
   -v "${REHEARSE_SESSION_DATA}:${REHEARSE_SESSION_DATA}:rw"
@@ -31,13 +32,32 @@ args=(
 )
 
 if [ -n "${REHEARSE_AGENT_MESSAGE:-}" ]; then
-  args+=(-e "REHEARSE_AGENT_MESSAGE=${REHEARSE_AGENT_MESSAGE}")
+  docker_args+=(-e "REHEARSE_AGENT_MESSAGE=${REHEARSE_AGENT_MESSAGE}")
 fi
 
 if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then
-  args+=(-e "REHEARSE_AGENT_EXTRA_ARGS=${REHEARSE_AGENT_EXTRA_ARGS}")
+  docker_args+=(-e "REHEARSE_AGENT_EXTRA_ARGS=${REHEARSE_AGENT_EXTRA_ARGS}")
 fi
 
-args+=("${REHEARSE_AGENT_IMAGE}")
+case "${REHEARSE_RUNNER_MODE}" in
+  run)
+    docker_args+=("${REHEARSE_AGENT_IMAGE}")
+    ;;
+  debug)
+    : "${REHEARSE_DEBUG_ENTRYPOINT:?required}"
+    if [ -t 0 ] && [ -t 1 ]; then
+      docker_args+=(-it)
+    fi
+    docker_args+=(
+      --entrypoint "${REHEARSE_DEBUG_ENTRYPOINT}"
+      "${REHEARSE_AGENT_IMAGE}"
+      "$@"
+    )
+    ;;
+  *)
+    echo "unknown REHEARSE_RUNNER_MODE: ${REHEARSE_RUNNER_MODE}" >&2
+    exit 2
+    ;;
+esac
 
-exec flock -F -E 75 -n "${REHEARSE_SESSION_RUN_LOCK}" "${args[@]}"
+exec flock -F -E 75 -n "${REHEARSE_SESSION_RUN_LOCK}" "${docker_args[@]}"

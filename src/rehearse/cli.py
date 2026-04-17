@@ -31,6 +31,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("-m", "--message", default=None,
                        help="message to pass to the agent")
 
+    p_debug = sub.add_parser("debug", help="run a command in the agent image")
+    p_debug.add_argument("session_id")
+    p_debug.add_argument("argv", nargs=argparse.REMAINDER)
+
     p_purge = sub.add_parser("purge", help="delete a session workspace")
     p_purge.add_argument("session_id")
 
@@ -60,6 +64,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return commands.cmd_status(args.session_id)
         case "run":
             return commands.cmd_run(args.session_id, message=args.message)
+        case "debug":
+            return commands.cmd_debug(args.session_id, args.argv)
         case "purge":
             return commands.cmd_purge(args.session_id)
         case "commit":

@@ -93,6 +93,14 @@ stat -c '%a %U:%G %n' ~/.local/share/rehearse/sessions/$SID/data/outbox
 - `inbox/` は agent UID/GID 所有
 - `outbox/` とサブディレクトリは `1777` (sticky、 guard UID/GID 所有)
 
+agent image の中で手動確認したいときは `debug` を使う。mount、UID/GID、lock、状態更新は `run` と同じで、entrypoint だけを差し替える。端末から実行した場合は interactive TTY も渡す:
+
+```bash
+uv run rehearse debug "$SID" /bin/bash
+uv run rehearse debug "$SID" codex --help
+uv run rehearse debug "$SID" /opt/rehearse/entrypoint.sh
+```
+
 ## プロファイル
 
 実行時設定は profile JSON に書く。 `rehearse create -p <profile> ...` で指定でき、 `-p` を省略すると `default` profile が使われる。 profile は session 作成時に `meta.json` へ転記されるので、後から profile JSON を編集しても既存 session には影響しない。
@@ -241,7 +249,6 @@ docker run --rm --user 0:0 \
 - 仕様変更
   - 🎯 `~/.rehearse` を既定の `$REHEARSE_ROOT` にする
 - 機能追加
-  - 🎯 デバッグ (`rehearse debug SID CMD ARG...`)
   - 🎯 一括削除 (`rehearse purge SID1 SID2...`)
   - 🎯 Gemini CLI に対応する
   - 🎯 OpenCode に対応する

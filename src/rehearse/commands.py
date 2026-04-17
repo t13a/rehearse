@@ -170,9 +170,26 @@ def cmd_status(session_id: str | None) -> int:
     return 0
 
 
-# ---- run ---------------------------------------------------------------
+# ---- run / debug -------------------------------------------------------
 
 def cmd_run(session_id: str, *, message: str | None = None) -> int:
+    return _cmd_run_like(session_id, message=message, debug_argv=None)
+
+
+def cmd_debug(session_id: str, argv: list[str]) -> int:
+    if not argv:
+        print("usage: rehearse debug <session> CMD [ARGS...]", file=sys.stderr)
+        return 2
+    return _cmd_run_like(session_id, message=None, debug_argv=argv)
+
+
+def _cmd_run_like(
+    session_id: str,
+    *,
+    message: str | None,
+    debug_argv: list[str] | None,
+) -> int:
+    verb = "debug" if debug_argv is not None else "run"
     session_dir = _resolve_session_dir(session_id)
     meta = read_meta(session_dir)
     try:
@@ -190,7 +207,7 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
     )
     if status not in allowed:
         print(
-            f"cannot run session in status={status.value}",
+            f"cannot {verb} session in status={status.value}",
             file=sys.stderr,
         )
         return 2
@@ -202,11 +219,14 @@ def cmd_run(session_id: str, *, message: str | None = None) -> int:
     meta.exit_reason = "interrupted"
     write_meta(session_dir, meta)
 
-    rc = docker.run_agent(
-        session_dir, meta.a, meta.b, effective_profile, message=message
-    )
+    if debug_argv is None:
+        rc = docker.run_agent(
+            session_dir, meta.a, meta.b, effective_profile, message=message
+        )
+    else:
+        rc = docker.run_debug(session_dir, meta.a, meta.b, effective_profile, debug_argv)
     if rc == docker.RUN_LOCK_BUSY_EXIT:
-        print("cannot run a running session", file=sys.stderr)
+        print(f"cannot {verb} a running session", file=sys.stderr)
         return 2
 
     meta = read_meta(session_dir)

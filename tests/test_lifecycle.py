@@ -205,6 +205,62 @@ def test_run_with_message(
     assert commands.cmd_run(session_id, message="テスト指示") == 0
 
 
+def test_debug_requires_command(capsys: pytest.CaptureFixture[str]) -> None:
+    assert commands.cmd_debug("session", []) == 2
+    assert "usage: rehearse debug" in capsys.readouterr().err
+
+
+def test_debug_uses_run_status_flow(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    a, b = fake_ab
+    assert commands.cmd_create(str(a), str(b)) == 0
+    session_id = capsys.readouterr().out.strip()
+    session_dir = config.SESSIONS_DIR / session_id
+
+    def fake_debug(
+        workspace: Path,
+        _a: Path,
+        _b: Path,
+        _profile: object,
+        argv: list[str],
+    ) -> int:
+        assert workspace == session_dir
+        assert argv == ["/bin/bash", "-lc", "touch outbox/.done"]
+        (workspace / "data" / "outbox" / ".done").touch()
+        return 0
+
+    monkeypatch.setattr(commands.docker, "run_debug", fake_debug)
+
+    assert commands.cmd_debug(session_id, ["/bin/bash", "-lc", "touch outbox/.done"]) == 0
+    meta = read_meta(session_dir)
+    assert meta.status == SessionStatus.done
+    assert meta.started_at is not None
+    assert meta.ended_at is not None
+    assert meta.exit_reason == "normal"
+
+
+def test_debug_rejects_locked_running_session(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    assert commands.cmd_create(str(a), str(b)) == 0
+    session_id = capsys.readouterr().out.strip()
+    session_dir = config.SESSIONS_DIR / session_id
+
+    with workspace.flock_exclusive(workspace.run_lock_path(session_dir)):
+        assert commands.cmd_debug(session_id, ["/bin/bash"]) == 2
+    err = capsys.readouterr().err
+    assert "cannot debug session in status=running" in err
+
+
 def test_exec_runs_in_data_dir(
     docker_available: bool,
     rehearse_root: Path,

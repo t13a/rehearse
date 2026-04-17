@@ -75,6 +75,14 @@ stateDiagram-v2
   ```
 - 省略時は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` が使われる。恒久的な作業指示は `data/AGENTS.md` に置かれ、agent-native な discovery に任せる
 
+### `rehearse debug <session> CMD [ARGS...]`
+
+- `run` と同じ agent image、mount、UID/GID、`run.lock`、状態更新経路を使う
+- Docker の entrypoint だけを `CMD` に差し替え、`ARGS...` を image の後ろに渡す
+- 端末から実行した場合は interactive TTY を渡す
+- `CMD` は必須。shell に入りたい場合は `rehearse debug <session> /bin/bash` を明示する
+- `run` と同じ finalization を行う。手動操作で `outbox/.done` を作れば `done`、なければ exit code に応じて `failed`
+
 ### `rehearse status [<session>]`
 
 - 引数なし: 全セッションの一覧 (id, 状態, 起動時刻, A / B の要約)

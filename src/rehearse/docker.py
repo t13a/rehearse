@@ -58,14 +58,39 @@ def run_agent(
     *,
     message: str | None = None,
 ) -> int:
-    """Invoke the external agent runner script.
+    """Invoke the external agent runner script in normal agent mode."""
+    env = _runner_env(workspace, a, b, profile, message=message)
+    env["REHEARSE_RUNNER_MODE"] = "run"
 
-    The runner is a bash script (`scripts/docker-runner.sh` by default). The
-    harness passes parameters via environment variables and observes the
-    runner's exit code. Tests can set profile.agent_runner to a fake runner.
+    runner = str(profile.agent_runner)
+    return subprocess.run([runner], env=env).returncode
 
-    Returns the runner's exit code (does NOT raise on non-zero).
-    """
+
+def run_debug(
+    workspace: Path,
+    a: Path,
+    b: Path,
+    profile: EffectiveProfile,
+    argv: list[str],
+) -> int:
+    """Invoke the external agent runner script with an entrypoint override."""
+    env = _runner_env(workspace, a, b, profile, message=None)
+    env["REHEARSE_RUNNER_MODE"] = "debug"
+    env["REHEARSE_DEBUG_ENTRYPOINT"] = argv[0]
+
+    runner = str(profile.agent_runner)
+    return subprocess.run([runner, *argv[1:]], env=env).returncode
+
+
+def _runner_env(
+    workspace: Path,
+    a: Path,
+    b: Path,
+    profile: EffectiveProfile,
+    *,
+    message: str | None,
+) -> dict[str, str]:
+    """Build the env-var contract shared by run and debug."""
     env = os.environ.copy()
     env["REHEARSE_SESSION_WORKSPACE"] = str(workspace)
     env["REHEARSE_SESSION_DATA"] = str(workspace / "data")
@@ -85,9 +110,8 @@ def run_agent(
         env["REHEARSE_AGENT_MESSAGE"] = message
     else:
         env.pop("REHEARSE_AGENT_MESSAGE", None)
-
-    runner = str(profile.agent_runner)
-    return subprocess.run([runner], env=env).returncode
+    env.pop("REHEARSE_DEBUG_ENTRYPOINT", None)
+    return env
 
 
 def cleanup_container(workspace: Path, profile: EffectiveProfile) -> None:

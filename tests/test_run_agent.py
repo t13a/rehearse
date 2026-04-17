@@ -55,6 +55,7 @@ REQUIRED_KEYS = {
     "REHEARSE_AGENT_UID",
     "REHEARSE_AGENT_GID",
     "REHEARSE_AGENT_TIMEOUT",
+    "REHEARSE_RUNNER_MODE",
 }
 
 
@@ -92,6 +93,7 @@ def test_run_agent_passes_required_env(
     assert env["REHEARSE_AGENT_UID"] == str(config.DEFAULT_AGENT_UID)
     assert env["REHEARSE_AGENT_GID"] == str(config.DEFAULT_AGENT_GID)
     assert env["REHEARSE_AGENT_TIMEOUT"] == str(config.DEFAULT_AGENT_TIMEOUT)
+    assert env["REHEARSE_RUNNER_MODE"] == "run"
 
     config.reload()
 
@@ -191,6 +193,38 @@ def test_run_agent_propagates_exit_code(
     assert rc == 7
 
     config.reload()
+
+
+def test_run_debug_passes_entrypoint_and_args(
+    tmp_path: Path,
+) -> None:
+    dump = tmp_path / "env.dump"
+    runner = tmp_path / "dump-runner.sh"
+    runner.write_text(
+        "#!/bin/bash\n"
+        f"env > {dump}.env\n"
+        f"printf '%s\\n' \"$@\" > {dump}.argv\n"
+    )
+    runner.chmod(runner.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    profile = effective_profile({"agent_runner": str(runner)})
+
+    workspace = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    workspace.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = docker.run_debug(workspace, a, b, profile, ["/bin/bash", "-lc", "id"])
+    assert rc == 0
+
+    env = _parse_env(Path(f"{dump}.env"))
+    argv = Path(f"{dump}.argv").read_text().splitlines()
+    assert env["REHEARSE_RUNNER_MODE"] == "debug"
+    assert env["REHEARSE_DEBUG_ENTRYPOINT"] == "/bin/bash"
+    assert "REHEARSE_AGENT_MESSAGE" not in env
+    assert argv == ["-lc", "id"]
 
 
 def test_chown_container_invokes_docker_helper(
