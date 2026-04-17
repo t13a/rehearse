@@ -214,7 +214,6 @@ docker run --rm --user 0:0 \
 ## バックログ
 
 - 仕様変更
-  - 🎯 ホストの環境変数をコンテナに透過させない
   - 🎯 `rehearse discard` の廃止
   - 🎯 `~/.rehearse` を既定の `$REHEARSE_ROOT` にする
   - 🎯 コンテナとホストで同一の UID/GID を禁止
