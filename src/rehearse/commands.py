@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from rehearse import (
+    config,
     commit,
     docker,
     mirror,
@@ -148,7 +149,7 @@ def cmd_create(
 
 def cmd_status(session_id: str | None) -> int:
     if session_id is None:
-        sessions = workspace.sessions_dir()
+        sessions = config.SESSIONS_DIR
         if not sessions.exists():
             return 0
         rows = []

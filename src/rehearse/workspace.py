@@ -18,20 +18,8 @@ class SessionIdError(RuntimeError):
     """Raised when a requested session id is invalid or unavailable."""
 
 
-def sessions_dir() -> Path:
-    return config.SESSIONS_DIR
-
-
-def locks_dir() -> Path:
-    return config.LOCKS_DIR
-
-
 def session_path(session_id: str) -> Path:
-    return sessions_dir() / session_id
-
-
-def data_path(session_id: str) -> Path:
-    return session_path(session_id) / "data"
+    return config.SESSIONS_DIR / session_id
 
 
 def run_lock_path(session_dir: Path) -> Path:
@@ -39,8 +27,8 @@ def run_lock_path(session_dir: Path) -> Path:
 
 
 def ensure_root_dirs() -> None:
-    sessions_dir().mkdir(parents=True, exist_ok=True)
-    locks_dir().mkdir(parents=True, exist_ok=True)
+    config.SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    config.LOCKS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def validate_session_id(session_id: str) -> None:
@@ -90,7 +78,7 @@ def b_lock_path(b: Path) -> Path:
     other processes' open() calls. One tiny file per unique B is fine.
     """
     digest = hashlib.sha256(str(b).encode()).hexdigest()[:16]
-    return locks_dir() / f"b-{digest}.lock"
+    return config.LOCKS_DIR / f"b-{digest}.lock"
 
 
 def allocate_session_id() -> str:

@@ -89,7 +89,7 @@ def test_run_agent_passes_required_env(
     assert env["REHEARSE_SESSION_RUN_LOCK"] == str(workspace / "run.lock")
     assert env["REHEARSE_SESSION_A"] == str(a)
     assert env["REHEARSE_SESSION_B"] == str(b)
-    assert env["REHEARSE_AGENT_IMAGE"] == config.DEFAULT_AGENT_IMAGE
+    assert env["REHEARSE_AGENT_IMAGE"] == config.DEFAULT_CODEX_AGENT_IMAGE
     assert env["REHEARSE_AGENT_UID"] == str(config.DEFAULT_AGENT_UID)
     assert env["REHEARSE_AGENT_GID"] == str(config.DEFAULT_AGENT_GID)
     assert env["REHEARSE_AGENT_TIMEOUT"] == str(config.DEFAULT_AGENT_TIMEOUT)
