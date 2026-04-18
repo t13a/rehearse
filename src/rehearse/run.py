@@ -13,7 +13,7 @@ RUN_LOCK_BUSY_EXIT = 75
 
 
 def run_agent(
-    workspace: Path,
+    session_dir: Path,
     a: Path,
     b: Path,
     profile: EffectiveProfile,
@@ -23,7 +23,7 @@ def run_agent(
 ) -> int:
     """Invoke the external agent runner script in normal agent mode."""
     env = _runner_env(
-        workspace, a, b, profile, run_lock_path=run_lock_path, message=message
+        session_dir, a, b, profile, run_lock_path=run_lock_path, message=message
     )
     env["REHEARSE_RUNNER_MODE"] = "run"
 
@@ -32,7 +32,7 @@ def run_agent(
 
 
 def run_debug(
-    workspace: Path,
+    session_dir: Path,
     a: Path,
     b: Path,
     profile: EffectiveProfile,
@@ -42,7 +42,7 @@ def run_debug(
 ) -> int:
     """Invoke the external agent runner script with an entrypoint override."""
     env = _runner_env(
-        workspace, a, b, profile, run_lock_path=run_lock_path, message=None
+        session_dir, a, b, profile, run_lock_path=run_lock_path, message=None
     )
     env["REHEARSE_RUNNER_MODE"] = "debug"
     env["REHEARSE_DEBUG_ENTRYPOINT"] = argv[0]
@@ -52,7 +52,7 @@ def run_debug(
 
 
 def _runner_env(
-    workspace: Path,
+    session_dir: Path,
     a: Path,
     b: Path,
     profile: EffectiveProfile,
@@ -62,9 +62,9 @@ def _runner_env(
 ) -> dict[str, str]:
     """Build the env-var contract shared by run and debug."""
     env = os.environ.copy()
-    env["REHEARSE_SESSION_WORKSPACE"] = str(workspace)
-    env["REHEARSE_SESSION_DATA"] = str(workspace / "data")
-    env["REHEARSE_SESSION_HOME"] = str(workspace / "home" / "agent")
+    env["REHEARSE_SESSION_DIR"] = str(session_dir)
+    env["REHEARSE_AGENT_WORK_DIR"] = str(session_dir / "data")
+    env["REHEARSE_AGENT_HOME"] = str(session_dir / "home" / "agent")
     env["REHEARSE_SESSION_RUN_LOCK"] = str(run_lock_path)
     env["REHEARSE_SESSION_A"] = str(a)
     env["REHEARSE_SESSION_B"] = str(b)

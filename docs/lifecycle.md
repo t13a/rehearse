@@ -25,12 +25,12 @@ stateDiagram-v2
 
 | 状態 | 説明 |
 |---|---|
-| `created` | `rehearse create` が workspace を構築した直後、まだ `run` していない |
+| `created` | `rehearse create` が session directory を構築した直後、まだ `run` していない |
 | `running` | セッションの run lock が保持され、agent runner が稼働中 |
 | `done` | `outbox/.done` が存在する状態で container 正常終了 |
 | `failed` | `outbox/.done` なしで container 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
 | `committed` | `commit` が完了し、実ファイルが A→B に移動済み |
-| `purged` | workspace が物理削除された |
+| `purged` | session directory が物理削除された |
 
 `done` と `failed` の区別は重要。 `done` は「 agent が自分で完了と判断した」正常系。 `failed` は agent が完走しなかった異常系で、レビュー時に扱いを変えることがある。 harness の挙動 (commit/run) は両者で同じなので、状態としては 2 つに畳んでいる。
 
@@ -42,12 +42,12 @@ stateDiagram-v2
 
 ### `rehearse create [-p <profile>] [-s <session>] <A> <B>`
 
-- 新しい workspace を作成
+- 新しい session directory を作成
 - `$REHEARSE_ROOT/profiles/<profile>.json` を読み込み、 raw profile を `meta.json` に転記
 - `-p` 未指定時は `default`。 `profiles/default.json` がなければ `{}` で自動作成
 - `-s` 指定時はその値を session id として使う。未指定時は UNIX 秒ベースで自動採番
-- profile の `skeleton` で指定された `$REHEARSE_ROOT/skeletons/<name>/` を `home/agent/` にコピー。未指定時は `default`。 `skeletons/default/` がなければ空ディレクトリで自動作成
-- `data/` 配下に `refs/{a,b}` symlink、`inbox/`, `outbox/` を構築
+- profile の `skeleton` で指定された `$REHEARSE_ROOT/skeletons/<name>/` を agent home (`home/agent/`) にコピー。未指定時は `default`。 `skeletons/default/` がなければ空ディレクトリで自動作成
+- agent work dir (`data/`) 配下に `refs/{a,b}` symlink、`inbox/`, `outbox/` を構築
 - `meta.json` を書き出し
 - `.gitignore` を書き、 `data/` の初期状態を git にスナップショット (レビュー用、詳細は [architecture.md](architecture.md) の「セッション開始時フック」節)
 
@@ -61,7 +61,7 @@ stateDiagram-v2
   - exit 124 / 137 → `failed` (`exit_reason="timeout"`)
   - その他 → `failed` (`exit_reason="exit=N"`)
 
-`--rm` を付けるので container は毎回使い捨て。会話履歴や認証情報は workspace の `home/agent/` (= container の `/home/agent`) に永続化される。`home/agent/.rehearse/agent/init.sh` があれば、 entrypoint は agent CLI 起動前にこれを source する。 harness ↔ runner 間の env 契約と timeout の扱いは [architecture.md](architecture.md) の「agent runner」節を参照。
+`--rm` を付けるので container は毎回使い捨て。会話履歴や認証情報は agent home (`home/agent/` = container の `/home/agent`) に永続化される。`home/agent/.rehearse/agent/init.sh` があれば、 entrypoint は agent CLI 起動前にこれを source する。 harness ↔ runner 間の env 契約と timeout の扱いは [architecture.md](architecture.md) の「agent runner」節を参照。
 
 **再実行** (`done` / `failed` からの再 run):
 
@@ -73,7 +73,7 @@ stateDiagram-v2
   ```bash
   rehearse run 1744296235 -m "ジャズは year/artist ではなく label/catalog 順で並べて"
   ```
-- 省略時は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` が使われる。恒久的な作業指示は `data/AGENTS.md` に置かれ、agent-native な discovery に任せる
+- 省略時は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` が使われる。恒久的な作業指示は agent work dir の `data/AGENTS.md` に置かれ、agent-native な discovery に任せる
 
 ### `rehearse debug <session> CMD [ARGS...]`
 
@@ -99,7 +99,7 @@ stateDiagram-v2
 
 ### `rehearse purge <session>`
 
-- workspace を物理削除
+- session directory を物理削除
 - どの永続状態からでも実行可能 (`created` / `done` / `failed` / `committed`)
 - 実ファイルへの影響なし
 
@@ -130,13 +130,13 @@ outbox/music/
 **性質**:
 
 - `.FYI.md` は **実ファイル**であり symlink ではない
-- commit 時に B には**移動しない**: workspace 内にそのまま残る (audit 記録)
+- commit 時に B には**移動しない**: session directory 内にそのまま残る (audit 記録)
 - レビュー時の判断材料として読める
 - 必須ではない: agent が必要と判断した場所にだけ書く
 
 ## 規約: transcript
 
-agent の会話ログは home 配下に保存される。ハーネスは必要に応じてこれを workspace の `transcript.jsonl` にコピーできる。
+agent の会話ログは agent home 配下に保存される。ハーネスは必要に応じてこれを session directory の `transcript.jsonl` にコピーできる。
 
 - レビュー時に「なぜその配置にしたか」を遡れる
 - `.FYI.md` とは別次元の情報 (transcript は全行動の記録、 `.FYI.md` は agent 自身が選んだダイジェスト)
@@ -162,9 +162,9 @@ less data/transcript.jsonl     # 判断根拠を遡りたいとき
 
 納得したら `rehearse commit`、不要なら `rehearse purge`。 git リポジトリは rehearse の動作に関与しないので、レビュアーが自由にブランチを切って試しても構わない。
 
-## コミット後の workspace の姿
+## コミット後の作業ディレクトリの姿
 
-`commit` 実行後、workspace はこのような状態になる:
+`commit` 実行後、作業ディレクトリはこのような状態になる:
 
 - `inbox/` の symlink は dead (target の実ファイルが B に移動したので壊れている)
 - `outbox/` の symlink も dead (同上)

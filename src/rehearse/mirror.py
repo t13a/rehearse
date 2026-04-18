@@ -1,4 +1,4 @@
-"""Build the workspace `data/` tree: refs/{a,b} symlinks + inbox/ and outbox/ mirrors."""
+"""Build the session `data/` tree: refs/{a,b} symlinks + inbox/ and outbox/ mirrors."""
 
 from __future__ import annotations
 
@@ -41,16 +41,16 @@ def _mirror(
     _chmod_tree(dest_root, dir_mode)
 
 
-def build_workspace_data(
-    data_dir: Path, a: Path, b: Path
+def build_work_dir(
+    work_dir: Path, a: Path, b: Path
 ) -> None:
     """Construct `data/` contents: refs/{a,b} symlinks + inbox/ + outbox/ mirrors.
 
-    Assumes `data_dir` already exists and is empty.
+    Assumes `work_dir` already exists and is empty.
     """
-    data_dir.mkdir(parents=True, exist_ok=True)
+    work_dir.mkdir(parents=True, exist_ok=True)
 
-    refs_dir = data_dir / "refs"
+    refs_dir = work_dir / "refs"
     refs_dir.mkdir()
     (refs_dir / "a").symlink_to(a)
     (refs_dir / "b").symlink_to(b)
@@ -58,5 +58,5 @@ def build_workspace_data(
     ref_a = refs_dir / "a"
     ref_b = refs_dir / "b"
 
-    _mirror(a, data_dir / "inbox", ref_a, C_MODE)
-    _mirror(b, data_dir / "outbox", ref_b, D_MODE)
+    _mirror(a, work_dir / "inbox", ref_a, C_MODE)
+    _mirror(b, work_dir / "outbox", ref_b, D_MODE)

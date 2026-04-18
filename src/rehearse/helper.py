@@ -1,4 +1,4 @@
-"""Root helper script contract for privileged workspace operations."""
+"""Root helper script contract for privileged session directory operations."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def chown_paths(
 
 
 def remove_tree(mount: Path, path: Path, profile: EffectiveProfile) -> None:
-    """Delete a workspace tree via the root helper script."""
+    """Delete a session directory tree via the root helper script."""
     subprocess.run(
         [
             str(config.DEFAULT_DOCKER_HELPER),

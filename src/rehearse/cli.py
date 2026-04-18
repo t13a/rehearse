@@ -49,7 +49,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_debug.add_argument("argv", nargs=argparse.REMAINDER)
     p_debug.set_defaults(func=_cmd_debug)
 
-    p_purge = sub.add_parser("purge", help="delete a session workspace")
+    p_purge = sub.add_parser("purge", help="delete a session")
     p_purge.add_argument("session_id")
     p_purge.set_defaults(func=_cmd_purge)
 
@@ -223,8 +223,8 @@ def _cmd_exec(args: argparse.Namespace) -> int:
         print("usage: rehearse exec <session> CMD [ARGS...]", file=sys.stderr)
         return 2
     session_dir = session.resolve_session_dir(args.session_id)
-    data_dir = session_dir / "data"
-    return subprocess.run(args.argv, cwd=data_dir).returncode
+    work_dir = session_dir / "data"
+    return subprocess.run(args.argv, cwd=work_dir).returncode
 
 
 def main(argv: Sequence[str] | None = None) -> int:

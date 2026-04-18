@@ -1,4 +1,4 @@
-"""Tests for session workspace lifecycle."""
+"""Tests for session directory lifecycle."""
 
 from __future__ import annotations
 

@@ -33,9 +33,9 @@ def _parse_env(dump_path: Path) -> dict[str, str]:
 
 
 REQUIRED_KEYS = {
-    "REHEARSE_SESSION_WORKSPACE",
-    "REHEARSE_SESSION_DATA",
-    "REHEARSE_SESSION_HOME",
+    "REHEARSE_SESSION_DIR",
+    "REHEARSE_AGENT_WORK_DIR",
+    "REHEARSE_AGENT_HOME",
     "REHEARSE_SESSION_RUN_LOCK",
     "REHEARSE_SESSION_A",
     "REHEARSE_SESSION_B",
@@ -56,16 +56,16 @@ def test_run_agent_passes_required_env(
     config.reload()
     profile = effective_profile({"agent_runner": str(runner)})
 
-    workspace = tmp_path / "ws"
+    session_dir = tmp_path / "ws"
     a = tmp_path / "A"
     b = tmp_path / "B"
-    workspace.mkdir()
+    session_dir.mkdir()
     a.mkdir()
     b.mkdir()
 
-    run_lock_path = session.run_lock_path(workspace)
+    run_lock_path = session.run_lock_path(session_dir)
 
-    rc = run.run_agent(workspace, a, b, profile, run_lock_path=run_lock_path)
+    rc = run.run_agent(session_dir, a, b, profile, run_lock_path=run_lock_path)
     assert rc == 0
 
     env = _parse_env(dump)
@@ -73,9 +73,9 @@ def test_run_agent_passes_required_env(
     missing = REQUIRED_KEYS - env.keys()
     assert not missing, f"runner did not receive: {missing}"
 
-    assert env["REHEARSE_SESSION_WORKSPACE"] == str(workspace)
-    assert env["REHEARSE_SESSION_DATA"] == str(workspace / "data")
-    assert env["REHEARSE_SESSION_HOME"] == str(workspace / "home" / "agent")
+    assert env["REHEARSE_SESSION_DIR"] == str(session_dir)
+    assert env["REHEARSE_AGENT_WORK_DIR"] == str(session_dir / "data")
+    assert env["REHEARSE_AGENT_HOME"] == str(session_dir / "home" / "agent")
     assert env["REHEARSE_SESSION_RUN_LOCK"] == str(run_lock_path)
     assert env["REHEARSE_SESSION_A"] == str(a)
     assert env["REHEARSE_SESSION_B"] == str(b)
@@ -97,19 +97,19 @@ def test_run_agent_passes_message_when_set(
     config.reload()
     profile = effective_profile({"agent_runner": str(runner)})
 
-    workspace = tmp_path / "ws"
+    session_dir = tmp_path / "ws"
     a = tmp_path / "A"
     b = tmp_path / "B"
-    workspace.mkdir()
+    session_dir.mkdir()
     a.mkdir()
     b.mkdir()
 
     rc = run.run_agent(
-        workspace,
+        session_dir,
         a,
         b,
         profile,
-        run_lock_path=session.run_lock_path(workspace),
+        run_lock_path=session.run_lock_path(session_dir),
         message="追加指示テスト",
     )
     assert rc == 0
@@ -129,15 +129,15 @@ def test_run_agent_omits_message_when_none(
     config.reload()
     profile = effective_profile({"agent_runner": str(runner)})
 
-    workspace = tmp_path / "ws"
+    session_dir = tmp_path / "ws"
     a = tmp_path / "A"
     b = tmp_path / "B"
-    workspace.mkdir()
+    session_dir.mkdir()
     a.mkdir()
     b.mkdir()
 
     rc = run.run_agent(
-        workspace, a, b, profile, run_lock_path=session.run_lock_path(workspace)
+        session_dir, a, b, profile, run_lock_path=session.run_lock_path(session_dir)
     )
     assert rc == 0
 
@@ -155,15 +155,15 @@ def test_run_agent_passes_extra_args_when_set(tmp_path: Path) -> None:
         {"agent_runner": str(runner), "agent_extra_args": "--verbose"}
     )
 
-    workspace = tmp_path / "ws"
+    session_dir = tmp_path / "ws"
     a = tmp_path / "A"
     b = tmp_path / "B"
-    workspace.mkdir()
+    session_dir.mkdir()
     a.mkdir()
     b.mkdir()
 
     rc = run.run_agent(
-        workspace, a, b, profile, run_lock_path=session.run_lock_path(workspace)
+        session_dir, a, b, profile, run_lock_path=session.run_lock_path(session_dir)
     )
     assert rc == 0
 
@@ -181,15 +181,15 @@ def test_run_agent_propagates_exit_code(
     config.reload()
     profile = effective_profile({"agent_runner": str(runner)})
 
-    workspace = tmp_path / "ws"
+    session_dir = tmp_path / "ws"
     a = tmp_path / "A"
     b = tmp_path / "B"
-    workspace.mkdir()
+    session_dir.mkdir()
     a.mkdir()
     b.mkdir()
 
     rc = run.run_agent(
-        workspace, a, b, profile, run_lock_path=session.run_lock_path(workspace)
+        session_dir, a, b, profile, run_lock_path=session.run_lock_path(session_dir)
     )
     assert rc == 7
 
@@ -208,19 +208,19 @@ def test_run_debug_passes_entrypoint_and_args(tmp_path: Path) -> None:
 
     profile = effective_profile({"agent_runner": str(runner)})
 
-    workspace = tmp_path / "ws"
+    session_dir = tmp_path / "ws"
     a = tmp_path / "A"
     b = tmp_path / "B"
-    workspace.mkdir()
+    session_dir.mkdir()
     a.mkdir()
     b.mkdir()
 
     rc = run.run_debug(
-        workspace,
+        session_dir,
         a,
         b,
         profile,
-        run_lock_path=session.run_lock_path(workspace),
+        run_lock_path=session.run_lock_path(session_dir),
         argv=["/bin/bash", "-lc", "id"],
     )
     assert rc == 0

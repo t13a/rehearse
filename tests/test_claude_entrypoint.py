@@ -31,7 +31,7 @@ def test_claude_entrypoint_runs_with_custom_message(
             "CLAUDE_ARGV_DUMP": str(argv_dump),
             "ANTHROPIC_API_KEY": "sk-ant-test",
             "HOME": str(home_root),
-            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
             "REHEARSE_AGENT_MESSAGE": "sort files",
         }
@@ -80,7 +80,7 @@ def test_claude_entrypoint_continues_with_resume_message(
             "CLAUDE_ARGV_DUMP": str(argv_dump),
             "ANTHROPIC_API_KEY": "sk-ant-test",
             "HOME": str(home_root),
-            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
         }
     )
@@ -129,7 +129,7 @@ def test_claude_entrypoint_sources_agent_init_before_key_check(
             "PATH": f"{bin_dir}:{env['PATH']}",
             "CLAUDE_ENV_DUMP": str(env_dump),
             "HOME": str(home_root),
-            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
         }
     )

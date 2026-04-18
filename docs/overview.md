@@ -13,14 +13,14 @@
 
 実ファイルをセッション中に一切動かさない。 agent が触るのは **symlink だけ**。
 
-セッション前に workspace を作り、内部に:
+エージェント用の作業ディレクトリを作り、内部に:
 
 - `inbox/` : `A` のファイル全部を symlink 化したツリー (未処理プール)
 - `outbox/` : `B` のファイル全部を symlink 化したツリー (既存ライブラリの写し)
 
 agent はセッション中、`inbox/` にある symlink を `outbox/` の「置きたい場所」に `mv` するだけ。これが「配置計画」になる。実ファイル ( `A` / `B` ) はセッション中一切変化しない。
 
-セッション終了後、人間が `outbox/` のツリーを見て計画を承認すれば、`commit` が実ファイルを `A → B` に rename する。不要なら `purge` で workspace を削除する (実ファイルは無傷)。
+セッション終了後、人間が `outbox/` のツリーを見て計画を承認すれば、`commit` が実ファイルを `A → B` に rename する。不要なら `purge` で作業ディレクトリを削除する (実ファイルは無傷)。
 
 ## なぜ symlink か
 
@@ -29,7 +29,7 @@ agent はセッション中、`inbox/` にある symlink を `outbox/` の「置
 - **プロビナンスが target に埋め込まれる** — `ls -l outbox/music/album/01.flac` で「これは `refs/a/inbox/xxxx.flac` 由来」と一発で読める
 - **標準の shell ツールだけで agent が動く** — `mv` / `mkdir` / `ls` / `find` で完結、カスタム API 不要
 - **セッション中 `A` / `B` が完全に pristine** — 外部の indexer や同期ツールから中間状態が見えない
-- **配置計画 = workspace のディレクトリツリー**という自己記述的な状態管理 — manifest のような二重化が不要
+- **配置計画 = session directory のディレクトリツリー**という自己記述的な状態管理 — manifest のような二重化が不要
 - **「未処理」と「配置済み」が `inbox/` と `outbox/` の所在で自然に表現される** — skip list などを別途持たなくてよい
 
 ## 核となる不変条件
@@ -39,9 +39,9 @@ agent はセッション中、`inbox/` にある symlink を `outbox/` の「置
 1. **セッション中、`A` と `B` の実ファイルは一切変化しない** (read-only マウント + symlink 越しの操作)
 2. **agent は symlink を `mv` で動かすこと以外できない** (`rm` / `cp` / `ln` などを道具箱から除外)
 3. **symlink は絶対パス** (相対だと `mv` で壊れる)
-4. **`refs/` 直下のディレクトリ構造 (workspace 親) は agent から書き換え不可** (親の write 権限を落とす)
+4. **`refs/` 直下のディレクトリ構造 (session directory 親) は agent から書き換え不可** (親の write 権限を落とす)
 
-失敗は常に「workspace に中途半端な symlink の配置が残る」という形でしか現れない。 `A` / `B` の一貫性は機構レベルで保たれる。
+失敗は常に「作業ディレクトリに中途半端な symlink の配置が残る」という形でしか現れない。 `A` / `B` の一貫性は機構レベルで保たれる。
 
 ## 既存構造への便乗
 

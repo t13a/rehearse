@@ -1,4 +1,4 @@
-"""Agent instruction installation for session workspaces."""
+"""Agent instruction installation for working directory."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ class InstructionError(RuntimeError):
     """Raised when agent instructions cannot be installed."""
 
 
-def install_agent_instructions(data_dir: Path, source: Path) -> None:
+def install_agent_instructions(work_dir: Path, source: Path) -> None:
     if not source.is_file():
         raise InstructionError(f"agent instructions not found: {source}")
-    (data_dir / "AGENTS.md").write_text(source.read_text())
-    (data_dir / "CLAUDE.md").symlink_to("AGENTS.md")
+    (work_dir / "AGENTS.md").write_text(source.read_text())
+    (work_dir / "CLAUDE.md").symlink_to("AGENTS.md")

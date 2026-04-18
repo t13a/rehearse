@@ -11,7 +11,7 @@ if [ -f "${agent_init}" ]; then
   . "${agent_init}"
 fi
 
-cd "${REHEARSE_WORKSPACE_DATA:-/workspace/data}"
+cd "${REHEARSE_AGENT_WORK_DIR:-/mnt}"
 
 global_args=(
   --ask-for-approval never

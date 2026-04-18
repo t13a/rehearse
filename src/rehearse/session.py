@@ -1,4 +1,4 @@
-"""Session workspace lifecycle and meta.json helpers."""
+"""Session lifecycle and meta.json helpers."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ class SessionMeta(BaseModel):
     ended_at: datetime | None = None
     a: Path
     b: Path
-    workspace: Path
+    session_dir: Path
     profile_name: str
     profile: dict[str, Any]
     exit_reason: str | None = None
@@ -199,17 +199,17 @@ def create_session(
         else allocate_named_session_id(session_id)
     )
     session_dir = session_path(session_id)
-    data_dir = session_dir / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
+    work_dir = session_dir / "data"
+    work_dir.mkdir(parents=True, exist_ok=True)
 
-    mirror.build_workspace_data(data_dir, a, b)
+    mirror.build_work_dir(work_dir, a, b)
     instruction.install_agent_instructions(
-        data_dir, effective_profile.agent_instructions
+        work_dir, effective_profile.agent_instructions
     )
 
     helper.chown_paths(
         session_dir.parent,
-        data_dir,
+        work_dir,
         effective_profile,
         uid=effective_profile.guard_uid,
         gid=effective_profile.guard_gid,
@@ -221,7 +221,7 @@ def create_session(
 
     helper.chown_paths(
         session_dir.parent,
-        [data_dir / "inbox", agent_home],
+        [work_dir / "inbox", agent_home],
         effective_profile,
         uid=effective_profile.agent_uid,
         gid=effective_profile.agent_gid,
@@ -238,7 +238,7 @@ def create_session(
         created_at=now(),
         a=a,
         b=b,
-        workspace=session_dir,
+        session_dir=session_dir,
         profile_name=profile_name,
         profile=raw_profile,
     )

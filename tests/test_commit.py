@@ -14,12 +14,12 @@ from rehearse import commit, mirror
 # helpers
 # ---------------------------------------------------------------------------
 
-def _build_workspace(tmp_path: Path, a: Path, b: Path) -> Path:
-    """Build a minimal workspace (no docker, no chown) for commit testing."""
+def _build_session_dir(tmp_path: Path, a: Path, b: Path) -> Path:
+    """Build a minimal session directory (no docker, no chown) for commit testing."""
     session_dir = tmp_path / "session"
-    data_dir = session_dir / "data"
-    data_dir.mkdir(parents=True)
-    mirror.build_workspace_data(data_dir, a, b)
+    work_dir = session_dir / "data"
+    work_dir.mkdir(parents=True)
+    mirror.build_work_dir(work_dir, a, b)
     return session_dir
 
 
@@ -36,7 +36,7 @@ def _read_log_ops(session_dir: Path) -> list[str]:
 
 def test_commit_moves_a_files(tmp_path: Path, fake_ab: tuple[Path, Path]) -> None:
     a, b = fake_ab
-    session_dir = _build_workspace(tmp_path, a, b)
+    session_dir = _build_session_dir(tmp_path, a, b)
     outbox = session_dir / "data" / "outbox"
 
     # Simulate agent moving inbox/file1.txt → outbox/newdir/file1.txt
@@ -57,7 +57,7 @@ def test_commit_moves_a_files(tmp_path: Path, fake_ab: tuple[Path, Path]) -> Non
 
 def test_commit_is_idempotent(tmp_path: Path, fake_ab: tuple[Path, Path]) -> None:
     a, b = fake_ab
-    session_dir = _build_workspace(tmp_path, a, b)
+    session_dir = _build_session_dir(tmp_path, a, b)
     outbox = session_dir / "data" / "outbox"
 
     src_link = session_dir / "data" / "inbox" / "file1.txt"
@@ -78,7 +78,7 @@ def test_commit_skips_initial_b_symlinks(
     tmp_path: Path, fake_ab: tuple[Path, Path]
 ) -> None:
     a, b = fake_ab
-    session_dir = _build_workspace(tmp_path, a, b)
+    session_dir = _build_session_dir(tmp_path, a, b)
 
     # Don't move anything — commit sees only B-mirror symlinks
     stats = commit.commit_session(session_dir, a, b)
@@ -94,7 +94,7 @@ def test_commit_skips_fyi_files(
     tmp_path: Path, fake_ab: tuple[Path, Path]
 ) -> None:
     a, b = fake_ab
-    session_dir = _build_workspace(tmp_path, a, b)
+    session_dir = _build_session_dir(tmp_path, a, b)
     outbox = session_dir / "data" / "outbox"
 
     # Add a .FYI.md as a real file
@@ -122,8 +122,8 @@ def test_commit_aborts_on_conflict(
     (b / "collision").mkdir()
     (b / "collision" / "file1.txt").write_text("I was here first\n")
 
-    # Rebuild workspace so b-mirror picks up the collision dir
-    session_dir = _build_workspace(tmp_path, a, b)
+    # Rebuild session_dir so b-mirror picks up the collision dir
+    session_dir = _build_session_dir(tmp_path, a, b)
     outbox = session_dir / "data" / "outbox"
 
     # Agent moves inbox/file1.txt → outbox/collision/file1.txt (same name as B's existing)
@@ -142,7 +142,7 @@ def test_commit_creates_nested_b_dirs(
     tmp_path: Path, fake_ab: tuple[Path, Path]
 ) -> None:
     a, b = fake_ab
-    session_dir = _build_workspace(tmp_path, a, b)
+    session_dir = _build_session_dir(tmp_path, a, b)
     outbox = session_dir / "data" / "outbox"
 
     # Agent places file deep in a path that doesn't exist in B

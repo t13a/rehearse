@@ -13,26 +13,26 @@ from rehearse import instruction
 def test_install_agent_instructions_copies_agents_and_claude_alias(
     tmp_path: Path,
 ) -> None:
-    data = tmp_path / "data"
-    data.mkdir()
+    work_dir = tmp_path / "data"
+    work_dir.mkdir()
     source = tmp_path / "default.md"
     source.write_text("# Instructions\n")
 
-    instruction.install_agent_instructions(data, source)
+    instruction.install_agent_instructions(work_dir, source)
 
-    assert (data / "AGENTS.md").read_text() == "# Instructions\n"
-    assert (data / "CLAUDE.md").is_symlink()
-    assert os.readlink(data / "CLAUDE.md") == "AGENTS.md"
+    assert (work_dir / "AGENTS.md").read_text() == "# Instructions\n"
+    assert (work_dir / "CLAUDE.md").is_symlink()
+    assert os.readlink(work_dir / "CLAUDE.md") == "AGENTS.md"
 
     source.write_text("# Changed\n")
-    assert (data / "AGENTS.md").read_text() == "# Instructions\n"
+    assert (work_dir / "AGENTS.md").read_text() == "# Instructions\n"
 
 
 def test_install_agent_instructions_rejects_missing_source(
     tmp_path: Path,
 ) -> None:
-    data = tmp_path / "data"
-    data.mkdir()
+    work_dir = tmp_path / "data"
+    work_dir.mkdir()
 
     with pytest.raises(instruction.InstructionError, match="agent instructions not found"):
-        instruction.install_agent_instructions(data, tmp_path / "missing.md")
+        instruction.install_agent_instructions(work_dir, tmp_path / "missing.md")

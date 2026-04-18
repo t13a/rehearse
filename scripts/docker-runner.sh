@@ -6,9 +6,9 @@
 # invocation and lets the container's exit code propagate as its own.
 set -euo pipefail
 
-: "${REHEARSE_SESSION_WORKSPACE:?required}"
-: "${REHEARSE_SESSION_DATA:?required}"
-: "${REHEARSE_SESSION_HOME:?required}"
+: "${REHEARSE_SESSION_DIR:?required}"
+: "${REHEARSE_AGENT_WORK_DIR:?required}"
+: "${REHEARSE_AGENT_HOME:?required}"
 : "${REHEARSE_SESSION_RUN_LOCK:?required}"
 : "${REHEARSE_SESSION_A:?required}"
 : "${REHEARSE_SESSION_B:?required}"
@@ -21,13 +21,13 @@ set -euo pipefail
 docker_args=(
   docker run --rm
   --user "${REHEARSE_AGENT_UID}:${REHEARSE_AGENT_GID}"
-  -v "${REHEARSE_SESSION_DATA}:${REHEARSE_SESSION_DATA}:rw"
-  -v "${REHEARSE_SESSION_HOME}:/home/agent:rw"
+  -v "${REHEARSE_AGENT_WORK_DIR}:${REHEARSE_AGENT_WORK_DIR}:rw"
+  -v "${REHEARSE_AGENT_HOME}:/home/agent:rw"
   -v "${REHEARSE_SESSION_A}:${REHEARSE_SESSION_A}:ro"
   -v "${REHEARSE_SESSION_B}:${REHEARSE_SESSION_B}:ro"
-  -w "${REHEARSE_SESSION_DATA}"
+  -w "${REHEARSE_AGENT_WORK_DIR}"
   -e "HOME=/home/agent"
-  -e "REHEARSE_WORKSPACE_DATA=${REHEARSE_SESSION_DATA}"
+  -e "REHEARSE_AGENT_WORK_DIR=${REHEARSE_AGENT_WORK_DIR}"
   -e "REHEARSE_AGENT_TIMEOUT=${REHEARSE_AGENT_TIMEOUT}"
 )
 

@@ -180,7 +180,7 @@ def test_debug_uses_run_status_flow(
     session_dir = config.SESSIONS_DIR / session_id
 
     def fake_debug(
-        workspace: Path,
+        session_dir_arg: Path,
         _a: Path,
         _b: Path,
         _profile: object,
@@ -188,10 +188,10 @@ def test_debug_uses_run_status_flow(
         run_lock_path: Path,
         argv: list[str],
     ) -> int:
-        assert workspace == session_dir
+        assert session_dir_arg == session_dir
         assert run_lock_path == session.run_lock_path(session_dir)
         assert argv == ["/bin/bash", "-lc", "touch outbox/.done"]
-        (workspace / "data" / "outbox" / ".done").touch()
+        (session_dir_arg / "data" / "outbox" / ".done").touch()
         return 0
 
     monkeypatch.setattr(run, "run_debug", fake_debug)
@@ -261,7 +261,7 @@ def test_commit_transitions_to_committed(
     assert meta.status == SessionStatus.committed
 
 
-def test_exec_runs_in_data_dir(
+def test_exec_runs_in_work_dir(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],

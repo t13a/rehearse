@@ -19,7 +19,7 @@ def test_session_meta_rejects_persisted_running_status(tmp_path: Path) -> None:
             created_at=datetime.now(timezone.utc),
             a=tmp_path / "A",
             b=tmp_path / "B",
-            workspace=tmp_path / "sessions" / "123",
+            session_dir=tmp_path / "sessions" / "123",
             profile_name="default",
             profile={},
         )
@@ -33,7 +33,7 @@ def test_session_meta_rejects_invalid_session_id(tmp_path: Path) -> None:
             created_at=datetime.now(timezone.utc),
             a=tmp_path / "A",
             b=tmp_path / "B",
-            workspace=tmp_path / "sessions" / "bad",
+            session_dir=tmp_path / "sessions" / "bad",
             profile_name="default",
             profile={},
         )

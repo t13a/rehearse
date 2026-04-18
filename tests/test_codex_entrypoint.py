@@ -32,7 +32,7 @@ def test_codex_entrypoint_runs_exec_with_prompt_argument(
             "CODEX_ARGV_DUMP": str(argv_dump),
             "CODEX_HOME": str(home),
             "HOME": str(tmp_path / "home"),
-            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
             "REHEARSE_AGENT_MESSAGE": "sort files",
             "REHEARSE_AGENT_EXTRA_ARGS": "--oss",
@@ -89,7 +89,7 @@ def test_codex_entrypoint_sources_agent_init(
             "CODEX_ENV_DUMP": str(env_dump),
             "CODEX_HOME": str(home),
             "HOME": str(home_root),
-            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
         }
     )
@@ -119,7 +119,7 @@ def test_codex_entrypoint_fails_when_agent_init_fails(
     env.update(
         {
             "HOME": str(home_root),
-            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
         }
     )
@@ -159,7 +159,7 @@ def test_codex_entrypoint_resumes_existing_session(
             "CODEX_ARGV_DUMP": str(argv_dump),
             "CODEX_HOME": str(home),
             "HOME": str(tmp_path / "home"),
-            "REHEARSE_WORKSPACE_DATA": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(data),
             "REHEARSE_AGENT_TIMEOUT": "5",
             "REHEARSE_AGENT_EXTRA_ARGS": "--oss",
         }

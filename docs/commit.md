@@ -13,8 +13,8 @@
 ## 擬似コード
 
 ```python
-def commit(workspace: Path, A: Path, B: Path, log: LogFile):
-    data = workspace / "data"
+def commit(session_dir: Path, A: Path, B: Path, log: LogFile):
+    data = session_dir / "data"
     outbox = data / "outbox"
     a_prefix = str(data / "refs" / "a") + "/"
     b_prefix = str(data / "refs" / "b") + "/"
@@ -60,7 +60,7 @@ def handle_symlink(link: Path, outbox: Path, A: Path, B: Path,
         pass
 
     else:
-        # workspace 起点でないパス = 想定外
+        # session directory 起点でないパス = 想定外
         log.append("unexpected-target", target=target)
         raise CommitAbort(f"unexpected symlink target: {target}")
 
@@ -71,15 +71,15 @@ def resolve_target_to_real_A(target: str, a_prefix: str, A: Path) -> Path:
     return A / suffix
 ```
 
-## なぜ workspace 起点の absolute path で比較するか
+## なぜ session directory 起点の absolute path で比較するか
 
-symlink の target は `workspace/data/refs/a/...` または `workspace/data/refs/b/...` の 2 系統しかないという不変条件を立てている (inbox/outbox 構築時にそう作る)。
+symlink の target は `session directory/data/refs/a/...` または `session directory/data/refs/b/...` の 2 系統しかないという不変条件を立てている (inbox/outbox 構築時にそう作る)。
 
 target 文字列の prefix で分岐するので:
 
 - 文字列マッチだけで判断でき fs を叩かない
 - `/host/path/A/...` のような実パスに解決してから比較するより速い
-- 将来 A の実パスが変わっても、 workspace 内の prefix は変わらないので commit ロジックに影響しない
+- 将来 A の実パスが変わっても、 session directory 内の prefix は変わらないので commit ロジックに影響しない
 
 ## 冪等性の担保
 
@@ -97,9 +97,9 @@ target 文字列の prefix で分岐するので:
 ## `.FYI.md` の扱い
 
 - commit 中は **完全にスキップ** する
-- workspace 内 (`outbox/` の中) にそのまま残る
+- session directory 内 (`outbox/` の中) にそのまま残る
 - B のライブラリには混入しない (B のクリーンネスを維持)
-- レビュー時・後日の振り返り時に workspace/outbox/ 内で参照
+- レビュー時・後日の振り返り時に session directory/outbox/ 内で参照
 
 ## rollback (commit 中) は必要ないか
 
@@ -107,7 +107,7 @@ target 文字列の prefix で分岐するので:
 
 もしどうしても A 側に全て戻したい場合は:
 
-- workspace/commit.log を逆順に辿って rename で戻す
+- session directory/commit.log を逆順に辿って rename で戻す
 - ただしこれは例外対応であり、通常フローには含めない
 
 ## 並列性
