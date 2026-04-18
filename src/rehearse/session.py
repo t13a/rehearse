@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import time
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -13,16 +14,21 @@ from rehearse import (
     config,
     helper,
     instruction,
+    lock,
     mirror,
     profile as profile_mod,
     skeleton,
     validate,
-    workspace,
 )
+from rehearse.profile import PROFILE_NAME_RE
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GIT_SNAPSHOT_SCRIPT = REPO_ROOT / "scripts" / "git-snapshot.sh"
+
+
+class SessionIdError(RuntimeError):
+    """Raised when a requested session id is invalid or unavailable."""
 
 
 class SessionStatus(str, Enum):
@@ -50,8 +56,8 @@ class SessionMeta(BaseModel):
     @classmethod
     def validate_persisted_session_id(cls, value: str) -> str:
         try:
-            workspace.validate_session_id(value)
-        except workspace.SessionIdError as e:
+            validate_session_id(value)
+        except SessionIdError as e:
             raise ValueError(str(e)) from e
         return value
 
@@ -79,19 +85,68 @@ def write_meta(session_dir: Path, meta: SessionMeta) -> None:
     meta_path(session_dir).write_text(meta.model_dump_json(indent=2))
 
 
+def session_path(session_id: str) -> Path:
+    return config.SESSIONS_DIR / session_id
+
+
+def run_lock_path(session_dir: Path) -> Path:
+    return session_dir / "run.lock"
+
+
+def ensure_root_dirs() -> None:
+    config.SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def validate_session_id(session_id: str) -> None:
+    if not PROFILE_NAME_RE.fullmatch(session_id):
+        raise SessionIdError(
+            "invalid session id: use only letters, digits, '_', '-', and '.'"
+        )
+    if session_id in (".", ".."):
+        raise SessionIdError("invalid session id: must not be '.' or '..'")
+
+
+def allocate_session_id() -> str:
+    """Allocate a fresh session id (UNIX seconds, +1 on collision)."""
+    ensure_root_dirs()
+    candidate = int(time.time())
+    while True:
+        path = session_path(str(candidate))
+        try:
+            path.mkdir(parents=True)
+            return str(candidate)
+        except FileExistsError:
+            candidate += 1
+
+
+def allocate_named_session_id(session_id: str) -> str:
+    """Allocate a caller-provided session id without retrying on collision."""
+    validate_session_id(session_id)
+    ensure_root_dirs()
+    try:
+        session_path(session_id).mkdir(parents=True)
+    except FileExistsError as e:
+        raise SessionIdError(f"session already exists: {session_id}") from e
+    return session_id
+
+
+def is_run_locked(session_dir: Path) -> bool:
+    return lock.flock_is_locked(run_lock_path(session_dir))
+
+
 def resolve_session_dir(session_id: str) -> Path:
     try:
-        workspace.validate_session_id(session_id)
-    except workspace.SessionIdError as e:
+        validate_session_id(session_id)
+    except SessionIdError as e:
         raise SystemExit(str(e)) from e
-    path = workspace.session_path(session_id)
+    path = session_path(session_id)
     if not path.exists():
         raise SystemExit(f"session not found: {session_id}")
     return path
 
 
 def status_for_guards(session_dir: Path, meta: SessionMeta) -> SessionStatus:
-    if workspace.flock_is_locked(workspace.run_lock_path(session_dir)):
+    if is_run_locked(session_dir):
         return SessionStatus.running
     return meta.status
 
@@ -136,14 +191,14 @@ def create_session(
     skeleton.resolve_skeleton(effective_profile.skeleton)
     validate.preflight(a, b)
 
-    workspace.ensure_root_dirs()
+    ensure_root_dirs()
 
     session_id = (
-        workspace.allocate_session_id()
+        allocate_session_id()
         if session_id is None
-        else workspace.allocate_named_session_id(session_id)
+        else allocate_named_session_id(session_id)
     )
-    session_dir = workspace.session_path(session_id)
+    session_dir = session_path(session_id)
     data_dir = session_dir / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
 

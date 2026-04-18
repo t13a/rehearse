@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from rehearse import config, session, workspace
+from rehearse import config, session
 from rehearse.session import SessionStatus
 from rehearse.session import read_meta
 
@@ -136,7 +136,7 @@ def test_create_session_rejects_invalid_session_id(
 ) -> None:
     a, b = fake_ab
 
-    with pytest.raises(workspace.SessionIdError, match="invalid session id"):
+    with pytest.raises(session.SessionIdError, match="invalid session id"):
         session.create_session(str(a), str(b), session_id=session_id)
 
 
@@ -148,7 +148,7 @@ def test_create_session_rejects_existing_session_id(
     existing = config.SESSIONS_DIR / "taken"
     existing.mkdir(parents=True)
 
-    with pytest.raises(workspace.SessionIdError, match="session already exists: taken"):
+    with pytest.raises(session.SessionIdError, match="session already exists: taken"):
         session.create_session(str(a), str(b), session_id="taken")
     assert list(existing.iterdir()) == []
 

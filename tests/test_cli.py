@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from rehearse import cli, config, run, session, workspace
+from rehearse import cli, config, lock, run, session
 from rehearse.session import SessionStatus
 from rehearse.session import read_meta, write_meta
 
@@ -79,7 +79,7 @@ def test_cannot_purge_locked_running_session(
     session_id = session.create_session(str(a), str(b))
     session_dir = config.SESSIONS_DIR / session_id
 
-    with workspace.flock_exclusive(workspace.run_lock_path(session_dir)):
+    with lock.flock_exclusive(session.run_lock_path(session_dir)):
         assert cli.main(["purge", session_id]) == 2
     err = capsys.readouterr().err
     assert "running" in err
@@ -99,7 +99,7 @@ def test_status_reports_locked_session_as_running(
     meta.status = SessionStatus.done
     write_meta(session_dir, meta)
 
-    with workspace.flock_exclusive(workspace.run_lock_path(session_dir)):
+    with lock.flock_exclusive(session.run_lock_path(session_dir)):
         assert cli.main(["status", session_id]) == 0
     detail = capsys.readouterr().out
     assert '"status": "running"' in detail
@@ -184,9 +184,12 @@ def test_debug_uses_run_status_flow(
         _a: Path,
         _b: Path,
         _profile: object,
+        *,
+        run_lock_path: Path,
         argv: list[str],
     ) -> int:
         assert workspace == session_dir
+        assert run_lock_path == session.run_lock_path(session_dir)
         assert argv == ["/bin/bash", "-lc", "touch outbox/.done"]
         (workspace / "data" / "outbox" / ".done").touch()
         return 0
@@ -211,7 +214,7 @@ def test_debug_rejects_locked_running_session(
     session_id = session.create_session(str(a), str(b))
     session_dir = config.SESSIONS_DIR / session_id
 
-    with workspace.flock_exclusive(workspace.run_lock_path(session_dir)):
+    with lock.flock_exclusive(session.run_lock_path(session_dir)):
         assert cli.main(["debug", session_id, "/bin/bash"]) == 2
     err = capsys.readouterr().err
     assert "cannot debug session in status=running" in err
@@ -231,7 +234,7 @@ def test_commit_rejects_locked_running_session(
     meta.status = SessionStatus.done
     write_meta(session_dir, meta)
 
-    with workspace.flock_exclusive(workspace.run_lock_path(session_dir)):
+    with lock.flock_exclusive(session.run_lock_path(session_dir)):
         assert cli.main(["commit", session_id]) == 2
     assert "running" in capsys.readouterr().err
 

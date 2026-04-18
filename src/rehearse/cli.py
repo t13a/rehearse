@@ -15,7 +15,6 @@ from rehearse import (
     run,
     session,
     validate,
-    workspace,
 )
 
 
@@ -83,7 +82,7 @@ def _cmd_create(args: argparse.Namespace) -> int:
     except validate.PreflightError as e:
         print(f"preflight failed: {e}", file=sys.stderr)
         return 2
-    except workspace.SessionIdError as e:
+    except session.SessionIdError as e:
         print(f"session failed: {e}", file=sys.stderr)
         return 2
 
@@ -141,10 +140,22 @@ def _cmd_run_like(
 
     if debug_argv is None:
         rc = run.run_agent(
-            session_dir, meta.a, meta.b, effective_profile, message=message
+            session_dir,
+            meta.a,
+            meta.b,
+            effective_profile,
+            run_lock_path=session.run_lock_path(session_dir),
+            message=message,
         )
     else:
-        rc = run.run_debug(session_dir, meta.a, meta.b, effective_profile, debug_argv)
+        rc = run.run_debug(
+            session_dir,
+            meta.a,
+            meta.b,
+            effective_profile,
+            run_lock_path=session.run_lock_path(session_dir),
+            argv=debug_argv,
+        )
     if rc == run.RUN_LOCK_BUSY_EXIT:
         print(f"cannot {verb} a running session", file=sys.stderr)
         return 2
@@ -181,12 +192,11 @@ def _cmd_commit(args: argparse.Namespace) -> int:
         )
         return 2
 
-    with workspace.flock_exclusive(workspace.b_lock_path(meta.b)):
-        try:
-            stats = commit.commit_session(session_dir, meta.a, meta.b)
-        except commit.CommitAbort as e:
-            print(f"commit aborted: {e}", file=sys.stderr)
-            return 1
+    try:
+        stats = commit.commit_session_with_lock(session_dir, meta.a, meta.b)
+    except commit.CommitAbort as e:
+        print(f"commit aborted: {e}", file=sys.stderr)
+        return 1
 
     session.mark_committed(session_dir)
     print(

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from rehearse import config, run
+from rehearse import config, run, session
 from rehearse.profile import effective_profile
 
 
@@ -63,7 +63,9 @@ def test_run_agent_passes_required_env(
     a.mkdir()
     b.mkdir()
 
-    rc = run.run_agent(workspace, a, b, profile)
+    run_lock_path = session.run_lock_path(workspace)
+
+    rc = run.run_agent(workspace, a, b, profile, run_lock_path=run_lock_path)
     assert rc == 0
 
     env = _parse_env(dump)
@@ -74,7 +76,7 @@ def test_run_agent_passes_required_env(
     assert env["REHEARSE_SESSION_WORKSPACE"] == str(workspace)
     assert env["REHEARSE_SESSION_DATA"] == str(workspace / "data")
     assert env["REHEARSE_SESSION_HOME"] == str(workspace / "home" / "agent")
-    assert env["REHEARSE_SESSION_RUN_LOCK"] == str(workspace / "run.lock")
+    assert env["REHEARSE_SESSION_RUN_LOCK"] == str(run_lock_path)
     assert env["REHEARSE_SESSION_A"] == str(a)
     assert env["REHEARSE_SESSION_B"] == str(b)
     assert env["REHEARSE_AGENT_IMAGE"] == config.DEFAULT_CODEX_AGENT_IMAGE
@@ -102,7 +104,14 @@ def test_run_agent_passes_message_when_set(
     a.mkdir()
     b.mkdir()
 
-    rc = run.run_agent(workspace, a, b, profile, message="追加指示テスト")
+    rc = run.run_agent(
+        workspace,
+        a,
+        b,
+        profile,
+        run_lock_path=session.run_lock_path(workspace),
+        message="追加指示テスト",
+    )
     assert rc == 0
 
     env = _parse_env(dump)
@@ -127,7 +136,9 @@ def test_run_agent_omits_message_when_none(
     a.mkdir()
     b.mkdir()
 
-    rc = run.run_agent(workspace, a, b, profile)
+    rc = run.run_agent(
+        workspace, a, b, profile, run_lock_path=session.run_lock_path(workspace)
+    )
     assert rc == 0
 
     env = _parse_env(dump)
@@ -151,7 +162,9 @@ def test_run_agent_passes_extra_args_when_set(tmp_path: Path) -> None:
     a.mkdir()
     b.mkdir()
 
-    rc = run.run_agent(workspace, a, b, profile)
+    rc = run.run_agent(
+        workspace, a, b, profile, run_lock_path=session.run_lock_path(workspace)
+    )
     assert rc == 0
 
     env = _parse_env(dump)
@@ -175,7 +188,9 @@ def test_run_agent_propagates_exit_code(
     a.mkdir()
     b.mkdir()
 
-    rc = run.run_agent(workspace, a, b, profile)
+    rc = run.run_agent(
+        workspace, a, b, profile, run_lock_path=session.run_lock_path(workspace)
+    )
     assert rc == 7
 
     config.reload()
@@ -200,7 +215,14 @@ def test_run_debug_passes_entrypoint_and_args(tmp_path: Path) -> None:
     a.mkdir()
     b.mkdir()
 
-    rc = run.run_debug(workspace, a, b, profile, ["/bin/bash", "-lc", "id"])
+    rc = run.run_debug(
+        workspace,
+        a,
+        b,
+        profile,
+        run_lock_path=session.run_lock_path(workspace),
+        argv=["/bin/bash", "-lc", "id"],
+    )
     assert rc == 0
 
     env = _parse_env(Path(f"{dump}.env"))

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import IO
+
+from rehearse import config, lock
 
 
 class CommitAbort(RuntimeError):
@@ -32,6 +35,17 @@ def _log(fh: IO[str], **fields: object) -> None:
     entry = {"ts": _now_iso(), **fields}
     fh.write(json.dumps(entry, default=str) + "\n")
     fh.flush()
+
+
+def b_lock_path(b: Path) -> Path:
+    """Path to the advisory lock file for a given B directory."""
+    digest = hashlib.sha256(str(b).encode()).hexdigest()[:16]
+    return config.LOCKS_DIR / f"b-{digest}.lock"
+
+
+def commit_session_with_lock(session_dir: Path, a: Path, b: Path) -> CommitStats:
+    with lock.flock_exclusive(b_lock_path(b)):
+        return commit_session(session_dir, a, b)
 
 
 def commit_session(session_dir: Path, a: Path, b: Path) -> CommitStats:
