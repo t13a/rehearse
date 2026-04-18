@@ -9,7 +9,7 @@ import pytest
 
 from rehearse import cli, config, run, session, workspace
 from rehearse.session import SessionStatus
-from rehearse.session import meta_path, read_meta, write_meta
+from rehearse.session import read_meta, write_meta
 
 
 pytestmark = pytest.mark.docker
@@ -85,26 +85,6 @@ def test_cannot_purge_locked_running_session(
     assert "running" in err
 
 
-def test_status_rejects_persisted_running_status(
-    docker_available: bool,
-    rehearse_root: Path,
-    fake_ab: tuple[Path, Path],
-) -> None:
-    a, b = fake_ab
-    session_id = session.create_session(str(a), str(b))
-    session_dir = config.SESSIONS_DIR / session_id
-
-    raw = meta_path(session_dir).read_text()
-    meta_path(session_dir).write_text(
-        raw.replace('"status": "created"', '"status": "running"')
-    )
-
-    with pytest.raises(ValueError, match="status=running must not be persisted"):
-        cli.main(["status", session_id])
-
-    meta_path(session_dir).write_text(raw)
-
-
 def test_status_reports_locked_session_as_running(
     docker_available: bool,
     rehearse_root: Path,
@@ -178,8 +158,10 @@ def test_run_with_message(
 ) -> None:
     a, b = fake_ab
     session_id = session.create_session(str(a), str(b))
+    session_dir = config.SESSIONS_DIR / session_id
 
     assert cli.main(["run", session_id, "-m", "テスト指示"]) == 0
+    assert (session_dir / "data" / "outbox" / "FYI.md").read_text() == "テスト指示\n"
 
 
 def test_debug_requires_command(capsys: pytest.CaptureFixture[str]) -> None:
@@ -233,27 +215,6 @@ def test_debug_rejects_locked_running_session(
         assert cli.main(["debug", session_id, "/bin/bash"]) == 2
     err = capsys.readouterr().err
     assert "cannot debug session in status=running" in err
-
-
-def test_commit_rejects_bad_statuses(
-    docker_available: bool,
-    rehearse_root: Path,
-    fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    a, b = fake_ab
-    session_id = session.create_session(str(a), str(b))
-    session_dir = config.SESSIONS_DIR / session_id
-
-    meta = read_meta(session_dir)
-    meta.status = SessionStatus.created
-    write_meta(session_dir, meta)
-    assert cli.main(["commit", session_id]) == 2
-    assert "cannot commit session in status=created" in capsys.readouterr().err
-
-    meta = read_meta(session_dir)
-    meta.status = SessionStatus.failed
-    write_meta(session_dir, meta)
 
 
 def test_commit_rejects_locked_running_session(

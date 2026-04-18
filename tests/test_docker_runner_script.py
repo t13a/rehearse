@@ -10,7 +10,7 @@ from pathlib import Path
 from script_helpers import REPO_ROOT, write_executable
 
 
-def test_docker_runner_assembles_docker_env(
+def test_assembles_args_for_run(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"
@@ -61,7 +61,7 @@ def test_docker_runner_assembles_docker_env(
     assert argv[-1] == "rehearse-agent-codex:latest"
 
 
-def test_docker_runner_assembles_debug_entrypoint(
+def test_assembles_args_for_debug(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"
@@ -111,7 +111,7 @@ def test_docker_runner_assembles_debug_entrypoint(
     assert argv[image_index:] == ["rehearse-agent-codex:latest", "-lc", "id"]
 
 
-def test_agent_runners_fail_when_session_lock_is_held(
+def test_fails_when_session_lock_is_held(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"

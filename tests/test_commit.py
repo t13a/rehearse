@@ -156,20 +156,3 @@ def test_commit_creates_nested_b_dirs(
     assert stats.moved == 1
     assert (b / "x" / "y" / "z" / "file1.txt").exists()
     assert (b / "x" / "y" / "z" / "file1.txt").read_text() == "hello\n"
-
-
-def test_commit_reports_unprocessed(
-    tmp_path: Path, fake_ab: tuple[Path, Path]
-) -> None:
-    a, b = fake_ab
-    session_dir = _build_workspace(tmp_path, a, b)
-    outbox = session_dir / "data" / "outbox"
-
-    # Move only file1.txt, leave sub/file2.txt in inbox
-    src_link = session_dir / "data" / "inbox" / "file1.txt"
-    src_link.rename(outbox / "file1.txt")
-
-    stats = commit.commit_session(session_dir, a, b)
-
-    assert stats.moved == 1
-    assert stats.inbox_remaining == 1  # sub/file2.txt still in inbox

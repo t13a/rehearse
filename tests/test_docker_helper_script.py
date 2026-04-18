@@ -9,7 +9,7 @@ from pathlib import Path
 from script_helpers import REPO_ROOT, write_executable
 
 
-def test_docker_helper_assembles_root_helper_container(
+def test_assembles_args(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"

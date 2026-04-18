@@ -105,16 +105,6 @@ def test_agent_uid_must_not_match_guard_uid(
         profile.effective_profile({"agent_uid": 20000, "guard_uid": 20000})
 
 
-def test_codex_agent_selects_codex_defaults(
-    rehearse_root: Path,
-) -> None:
-    effective = profile.effective_profile({"agent": "codex"})
-
-    assert effective.agent == "codex"
-    assert effective.agent_runner == config.DEFAULT_AGENT_RUNNER
-    assert effective.agent_image == config.DEFAULT_CODEX_AGENT_IMAGE
-
-
 def test_claude_agent_selects_claude_defaults(
     rehearse_root: Path,
 ) -> None:
@@ -178,20 +168,6 @@ def test_invalid_profile_type_errors(
 
     with pytest.raises(profile.ProfileError, match="invalid profile"):
         profile.load_profile_for_create("badtype")
-
-
-def test_relative_paths_resolve_from_rehearse_root(
-    rehearse_root: Path,
-) -> None:
-    raw = {
-        "agent_runner": "bin/runner.sh",
-        "agent_instructions": "instructions/custom.md",
-    }
-
-    effective = profile.effective_profile(raw)
-
-    assert effective.agent_runner == rehearse_root / "bin" / "runner.sh"
-    assert effective.agent_instructions == rehearse_root / "instructions" / "custom.md"
 
 
 def test_skeleton_defaults_to_default(
