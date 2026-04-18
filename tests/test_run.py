@@ -1,14 +1,13 @@
-"""Verify the env-var contract between docker.run_agent and the runner script."""
+"""Verify the env-var contract between run.run_agent and the runner script."""
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 
 import pytest
 
-from rehearse import config, docker
+from rehearse import config, run
 from rehearse.profile import effective_profile
 
 
@@ -22,17 +21,6 @@ def _make_dump_runner(tmp_path: Path, dump_path: Path) -> Path:
     )
     runner.chmod(runner.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     return runner
-
-
-def _make_dump_helper(tmp_path: Path, dump_path: Path) -> Path:
-    helper = tmp_path / "dump-helper.sh"
-    helper.write_text(
-        "#!/bin/bash\n"
-        f"env > {dump_path}.env\n"
-        f"printf '%s\\n' \"$@\" > {dump_path}.argv\n"
-    )
-    helper.chmod(helper.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-    return helper
 
 
 def _parse_env(dump_path: Path) -> dict[str, str]:
@@ -75,7 +63,7 @@ def test_run_agent_passes_required_env(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b, profile)
+    rc = run.run_agent(workspace, a, b, profile)
     assert rc == 0
 
     env = _parse_env(dump)
@@ -114,7 +102,7 @@ def test_run_agent_passes_message_when_set(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b, profile, message="追加指示テスト")
+    rc = run.run_agent(workspace, a, b, profile, message="追加指示テスト")
     assert rc == 0
 
     env = _parse_env(dump)
@@ -139,7 +127,7 @@ def test_run_agent_omits_message_when_none(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b, profile)
+    rc = run.run_agent(workspace, a, b, profile)
     assert rc == 0
 
     env = _parse_env(dump)
@@ -148,9 +136,7 @@ def test_run_agent_omits_message_when_none(
     config.reload()
 
 
-def test_run_agent_passes_extra_args_when_set(
-    tmp_path: Path,
-) -> None:
+def test_run_agent_passes_extra_args_when_set(tmp_path: Path) -> None:
     dump = tmp_path / "env.dump"
     runner = _make_dump_runner(tmp_path, dump)
 
@@ -165,7 +151,7 @@ def test_run_agent_passes_extra_args_when_set(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b, profile)
+    rc = run.run_agent(workspace, a, b, profile)
     assert rc == 0
 
     env = _parse_env(dump)
@@ -189,15 +175,13 @@ def test_run_agent_propagates_exit_code(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_agent(workspace, a, b, profile)
+    rc = run.run_agent(workspace, a, b, profile)
     assert rc == 7
 
     config.reload()
 
 
-def test_run_debug_passes_entrypoint_and_args(
-    tmp_path: Path,
-) -> None:
+def test_run_debug_passes_entrypoint_and_args(tmp_path: Path) -> None:
     dump = tmp_path / "env.dump"
     runner = tmp_path / "dump-runner.sh"
     runner.write_text(
@@ -216,7 +200,7 @@ def test_run_debug_passes_entrypoint_and_args(
     a.mkdir()
     b.mkdir()
 
-    rc = docker.run_debug(workspace, a, b, profile, ["/bin/bash", "-lc", "id"])
+    rc = run.run_debug(workspace, a, b, profile, ["/bin/bash", "-lc", "id"])
     assert rc == 0
 
     env = _parse_env(Path(f"{dump}.env"))
@@ -225,57 +209,3 @@ def test_run_debug_passes_entrypoint_and_args(
     assert env["REHEARSE_DEBUG_ENTRYPOINT"] == "/bin/bash"
     assert "REHEARSE_AGENT_MESSAGE" not in env
     assert argv == ["-lc", "id"]
-
-
-def test_chown_container_invokes_docker_helper(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    dump = tmp_path / "helper.dump"
-    helper = _make_dump_helper(tmp_path, dump)
-    monkeypatch.setattr(config, "DEFAULT_DOCKER_HELPER", helper)
-
-    profile = effective_profile({"helper_image": "busybox:test"})
-    workspace = tmp_path / "sessions" / "123"
-    inbox = workspace / "data" / "inbox"
-    home = workspace / "home" / "agent"
-
-    docker.chown_container(
-        workspace,
-        [inbox, home],
-        profile,
-        uid=12345,
-        gid=23456,
-    )
-
-    env = _parse_env(Path(f"{dump}.env"))
-    argv = Path(f"{dump}.argv").read_text().splitlines()
-    assert env["REHEARSE_HELPER_IMAGE"] == "busybox:test"
-    assert env["REHEARSE_HELPER_MOUNT"] == str(workspace.parent)
-    assert argv == [
-        "chown",
-        "-Rh",
-        "12345:23456",
-        str(inbox),
-        str(home),
-    ]
-
-
-def test_cleanup_container_invokes_docker_helper(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    dump = tmp_path / "helper.dump"
-    helper = _make_dump_helper(tmp_path, dump)
-    monkeypatch.setattr(config, "DEFAULT_DOCKER_HELPER", helper)
-
-    profile = effective_profile({"helper_image": "busybox:test"})
-    workspace = tmp_path / "sessions" / "123"
-
-    docker.cleanup_container(workspace, profile)
-
-    env = _parse_env(Path(f"{dump}.env"))
-    argv = Path(f"{dump}.argv").read_text().splitlines()
-    assert env["REHEARSE_HELPER_IMAGE"] == "busybox:test"
-    assert env["REHEARSE_HELPER_MOUNT"] == str(workspace.parent)
-    assert argv == ["rm", "-rf", str(workspace)]

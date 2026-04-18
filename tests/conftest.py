@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from rehearse import config, docker
+from rehearse import config, helper
 from rehearse.profile import effective_profile
 
 
@@ -64,7 +64,7 @@ def rehearse_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     if root.exists():
         if DOCKER_AVAILABLE:
             try:
-                docker.cleanup_container(root, effective_profile({}))
+                helper.remove_tree(root.parent, root, effective_profile({}))
             except Exception:
                 pass
         else:

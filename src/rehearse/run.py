@@ -1,53 +1,15 @@
-"""Docker runner wrappers."""
+"""Agent runner script contract for `rehearse run` and `rehearse debug`."""
 
 from __future__ import annotations
 
 import os
 import subprocess
 from pathlib import Path
-from typing import Iterable
 
-from rehearse import config
 from rehearse.profile import EffectiveProfile
 
 
 RUN_LOCK_BUSY_EXIT = 75
-
-
-def _helper_env(mount: Path, profile: EffectiveProfile) -> dict[str, str]:
-    env = os.environ.copy()
-    env["REHEARSE_HELPER_IMAGE"] = profile.helper_image
-    env["REHEARSE_HELPER_MOUNT"] = str(mount)
-    return env
-
-
-def chown_container(
-    workspace: Path,
-    paths: Path | Iterable[Path],
-    profile: EffectiveProfile,
-    *,
-    uid: int,
-    gid: int,
-) -> None:
-    """Recursively chown one or more host paths to a numeric UID/GID."""
-    if isinstance(paths, Path):
-        path_list = [paths]
-    else:
-        path_list = list(paths)
-    if not path_list:
-        return
-
-    subprocess.run(
-        [
-            str(config.DEFAULT_DOCKER_HELPER),
-            "chown",
-            "-Rh",
-            f"{uid}:{gid}",
-            *[str(p) for p in path_list],
-        ],
-        env=_helper_env(workspace.parent, profile),
-        check=True,
-    )
 
 
 def run_agent(
@@ -112,17 +74,3 @@ def _runner_env(
         env.pop("REHEARSE_AGENT_MESSAGE", None)
     env.pop("REHEARSE_DEBUG_ENTRYPOINT", None)
     return env
-
-
-def cleanup_container(workspace: Path, profile: EffectiveProfile) -> None:
-    """Delete the workspace tree via a root helper container."""
-    subprocess.run(
-        [
-            str(config.DEFAULT_DOCKER_HELPER),
-            "rm",
-            "-rf",
-            str(workspace),
-        ],
-        env=_helper_env(workspace.parent, profile),
-        check=True,
-    )

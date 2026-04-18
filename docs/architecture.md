@@ -128,7 +128,7 @@ Codex CLI や Claude Code は home 配下に認証情報、設定、会話履歴
 
 ## agent runner: harness と agent の境界
 
-`docker run` の組み立ては **bash スクリプト (`scripts/docker-runner.sh`) に外出し**してある。 Python (`docker.run_agent`) はもはや agent コンテナの docker コマンドを知らず、 runner を `subprocess.run` で起動して exit code を受け取るだけの薄い wrapper になっている。
+`docker run` の組み立ては **bash スクリプト (`scripts/docker-runner.sh`) に外出し**してある。 Python (`run.run_agent`) はもはや agent コンテナの docker コマンドを知らず、 runner を `subprocess.run` で起動して exit code を受け取るだけの薄い wrapper になっている。
 
 同じ方針で、 root 権限が必要な `chown` / `cleanup` は `scripts/docker-helper.sh` に外出ししている。 Python は helper image、広めに mount する親ディレクトリ、実行したいコマンドだけを渡す。Docker 以外へ寄せる場合は runner と helper の 2 箇所が runtime 境界になる。
 

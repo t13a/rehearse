@@ -1,4 +1,4 @@
-"""Tests for `rehearse create` — workspace layout, permissions, meta.json."""
+"""Tests for session workspace lifecycle."""
 
 from __future__ import annotations
 
@@ -9,24 +9,20 @@ from pathlib import Path
 
 import pytest
 
-from rehearse import commands, config
-from rehearse.meta import SessionStatus, read_meta
+from rehearse import config, profile, session, validate, workspace
+from rehearse.session import SessionStatus
+from rehearse.session import read_meta
 
 
-pytestmark = pytest.mark.docker
-
-
+@pytest.mark.docker
 def test_create_builds_workspace(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
-    rc = commands.cmd_create(str(a), str(b))
-    assert rc == 0
+    session_id = session.create_session(str(a), str(b))
 
-    session_id = capsys.readouterr().out.strip()
     session_dir = config.SESSIONS_DIR / session_id
     data = session_dir / "data"
 
@@ -35,11 +31,8 @@ def test_create_builds_workspace(
     assert (data / "refs" / "a").resolve() == a.resolve()
     assert (data / "refs" / "b").resolve() == b.resolve()
 
-    # inbox/ mirrors A
     assert (data / "inbox" / "file1.txt").is_symlink()
     assert (data / "inbox" / "sub" / "file2.txt").is_symlink()
-
-    # outbox/ mirrors B
     assert (data / "outbox" / "existing" / "old.txt").is_symlink()
 
     assert (data / "AGENTS.md").is_file()
@@ -47,18 +40,15 @@ def test_create_builds_workspace(
     assert (data / "CLAUDE.md").is_symlink()
     assert os.readlink(data / "CLAUDE.md") == "AGENTS.md"
 
-    # inbox/ symlink target points via data/refs/a/...
     inbox_link = data / "inbox" / "file1.txt"
     target = os.readlink(inbox_link)
     assert target == str(data / "refs" / "a" / "file1.txt")
 
-    # outbox/ and subdirs are sticky (mode 1777)
     d_mode = stat.S_IMODE(os.stat(data / "outbox").st_mode)
     assert d_mode == 0o1777
     sub_mode = stat.S_IMODE(os.stat(data / "outbox" / "existing").st_mode)
     assert sub_mode == 0o1777
 
-    # data/ starts guard-owned so rw container paths don't retain host ownership
     data_stat = os.lstat(data)
     assert data_stat.st_uid == config.DEFAULT_GUARD_UID
     assert data_stat.st_gid == config.DEFAULT_GUARD_GID
@@ -72,12 +62,10 @@ def test_create_builds_workspace(
     assert claude_stat.st_uid == config.DEFAULT_GUARD_UID
     assert claude_stat.st_gid == config.DEFAULT_GUARD_GID
 
-    # inbox/ symlinks owned by agent UID after chown handoff
     c_stat = os.lstat(inbox_link)
     assert c_stat.st_uid == config.DEFAULT_AGENT_UID
     assert c_stat.st_gid == config.DEFAULT_AGENT_GID
 
-    # meta.json parses and has created status
     meta = read_meta(session_dir)
     assert meta.status == SessionStatus.created
     assert meta.session_id == session_id
@@ -86,7 +74,6 @@ def test_create_builds_workspace(
     assert meta.profile_name == "default"
     assert meta.profile["agent_image"] == "busybox:latest"
 
-    # git snapshot exists
     assert (session_dir / ".git").is_dir()
     tracked = subprocess.run(
         ["git", "-C", str(session_dir), "ls-files"],
@@ -98,38 +85,34 @@ def test_create_builds_workspace(
     assert "data/CLAUDE.md" in tracked
 
 
+@pytest.mark.docker
 def test_create_uses_named_profile(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
     custom = config.PROFILES_DIR / "custom.json"
     custom.write_text('{"agent_image": "busybox:latest", "agent_timeout": 42}\n')
 
-    rc = commands.cmd_create(str(a), str(b), profile_name="custom")
-    assert rc == 0
-
-    session_id = capsys.readouterr().out.strip()
+    session_id = session.create_session(str(a), str(b), profile_name="custom")
     meta = read_meta(config.SESSIONS_DIR / session_id)
 
     assert meta.profile_name == "custom"
     assert meta.profile == {"agent_image": "busybox:latest", "agent_timeout": 42}
 
 
+@pytest.mark.docker
 def test_create_uses_named_session_id(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
 
-    rc = commands.cmd_create(str(a), str(b), session_id="safe_1.2-3")
+    session_id = session.create_session(str(a), str(b), session_id="safe_1.2-3")
 
-    assert rc == 0
-    assert capsys.readouterr().out.strip() == "safe_1.2-3"
+    assert session_id == "safe_1.2-3"
     session_dir = config.SESSIONS_DIR / "safe_1.2-3"
     assert session_dir.is_dir()
     assert read_meta(session_dir).session_id == "safe_1.2-3"
@@ -139,38 +122,32 @@ def test_create_uses_named_session_id(
 def test_create_rejects_invalid_named_session_id(
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
     session_id: str,
 ) -> None:
     a, b = fake_ab
 
-    rc = commands.cmd_create(str(a), str(b), session_id=session_id)
-
-    assert rc == 2
-    assert "invalid session id" in capsys.readouterr().err
+    with pytest.raises(workspace.SessionIdError, match="invalid session id"):
+        session.create_session(str(a), str(b), session_id=session_id)
 
 
 def test_create_rejects_existing_named_session_id(
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
     existing = config.SESSIONS_DIR / "taken"
     existing.mkdir(parents=True)
 
-    rc = commands.cmd_create(str(a), str(b), session_id="taken")
-
-    assert rc == 2
-    assert "session already exists: taken" in capsys.readouterr().err
+    with pytest.raises(workspace.SessionIdError, match="session already exists: taken"):
+        session.create_session(str(a), str(b), session_id="taken")
     assert list(existing.iterdir()) == []
 
 
+@pytest.mark.docker
 def test_create_copies_named_skeleton(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
     skel = config.SKELETONS_DIR / "codex"
@@ -182,9 +159,8 @@ def test_create_copies_named_skeleton(
     custom = config.PROFILES_DIR / "codex.json"
     custom.write_text('{"skeleton": "codex"}\n')
 
-    assert commands.cmd_create(str(a), str(b), profile_name="codex") == 0
+    session_id = session.create_session(str(a), str(b), profile_name="codex")
 
-    session_id = capsys.readouterr().out.strip()
     session_dir = config.SESSIONS_DIR / session_id
     agent_home = session_dir / "home" / "agent"
 
@@ -224,19 +200,17 @@ def test_create_copies_named_skeleton(
     assert (skel / ".codex" / "auth.json").read_text() == '{"token": "changed-source"}\n'
 
 
+@pytest.mark.docker
 def test_create_guard_owned_b_mirror_rejects_agent_rename(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     if config.DEFAULT_AGENT_UID == 0:
         pytest.skip("root can bypass sticky bit ownership checks")
 
     a, b = fake_ab
-    assert commands.cmd_create(str(a), str(b)) == 0
-
-    session_id = capsys.readouterr().out.strip()
+    session_id = session.create_session(str(a), str(b))
     data = config.SESSIONS_DIR / session_id / "data"
 
     result = subprocess.run(
@@ -258,27 +232,26 @@ def test_create_guard_owned_b_mirror_rejects_agent_rename(
     assert not (data / "outbox" / "existing" / "renamed.txt").exists()
 
 
+@pytest.mark.docker
 def test_create_auto_creates_default_skeleton(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
     default = config.SKELETONS_DIR / "default"
     assert not default.exists()
 
-    assert commands.cmd_create(str(a), str(b)) == 0
+    session.create_session(str(a), str(b))
 
-    capsys.readouterr()
     assert default.is_dir()
 
 
+@pytest.mark.docker
 def test_create_copies_custom_agent_instructions(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
     instructions = config.REHEARSE_ROOT / "instructions" / "custom.md"
@@ -287,9 +260,10 @@ def test_create_copies_custom_agent_instructions(
     custom = config.PROFILES_DIR / "custom-instructions.json"
     custom.write_text('{"agent_instructions": "instructions/custom.md"}\n')
 
-    assert commands.cmd_create(str(a), str(b), profile_name="custom-instructions") == 0
+    session_id = session.create_session(
+        str(a), str(b), profile_name="custom-instructions"
+    )
 
-    session_id = capsys.readouterr().out.strip()
     data = config.SESSIONS_DIR / session_id / "data"
     assert (data / "AGENTS.md").read_text() == "# Custom instructions\n"
 
@@ -297,44 +271,35 @@ def test_create_copies_custom_agent_instructions(
     assert (data / "AGENTS.md").read_text() == "# Custom instructions\n"
 
 
-def test_create_rejects_missing_agent_instructions(
-    rehearse_root: Path,
-    fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    a, b = fake_ab
-    custom = config.PROFILES_DIR / "missing-instructions.json"
-    custom.write_text('{"agent_instructions": "instructions/missing.md"}\n')
-
-    rc = commands.cmd_create(str(a), str(b), profile_name="missing-instructions")
-
-    assert rc == 2
-    assert "agent instructions not found" in capsys.readouterr().err
-
-
 def test_create_rejects_missing_profile(
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
 
-    rc = commands.cmd_create(str(a), str(b), profile_name="missing")
-
-    assert rc == 2
-    assert "profile not found" in capsys.readouterr().err
+    with pytest.raises(profile.ProfileError, match="profile not found"):
+        session.create_session(str(a), str(b), profile_name="missing")
 
 
 def test_create_rejects_missing_skeleton(
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     a, b = fake_ab
     custom = config.PROFILES_DIR / "missing-skeleton.json"
     custom.write_text('{"skeleton": "ghost"}\n')
 
-    rc = commands.cmd_create(str(a), str(b), profile_name="missing-skeleton")
+    with pytest.raises(profile.ProfileError, match="skeleton not found"):
+        session.create_session(str(a), str(b), profile_name="missing-skeleton")
 
-    assert rc == 2
-    assert "skeleton not found" in capsys.readouterr().err
+
+def test_create_rejects_preflight_errors(
+    rehearse_root: Path,
+    tmp_path: Path,
+) -> None:
+    missing = tmp_path / "missing"
+    b = tmp_path / "B"
+    b.mkdir()
+
+    with pytest.raises(validate.PreflightError, match="A does not exist"):
+        session.create_session(str(missing), str(b))

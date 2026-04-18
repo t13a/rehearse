@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rehearse.meta import SessionMeta
+from rehearse.session import SessionMeta
 
 
 def test_session_meta_rejects_persisted_running_status(tmp_path: Path) -> None:

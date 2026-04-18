@@ -1,4 +1,4 @@
-"""Tests for the commit algorithm and cmd_commit."""
+"""Tests for the commit algorithm."""
 
 from __future__ import annotations
 
@@ -7,8 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from rehearse import commands, commit, config, mirror, workspace
-from rehearse.meta import SessionStatus, read_meta, write_meta
+from rehearse import commit, mirror
 
 
 # ---------------------------------------------------------------------------
@@ -174,78 +173,3 @@ def test_commit_reports_unprocessed(
 
     assert stats.moved == 1
     assert stats.inbox_remaining == 1  # sub/file2.txt still in inbox
-
-
-# ---------------------------------------------------------------------------
-# cmd_commit tests (docker required — cmd_create uses chown container)
-# ---------------------------------------------------------------------------
-
-@pytest.mark.docker
-def test_cmd_commit_rejects_bad_statuses(
-    docker_available: bool,
-    rehearse_root: Path,
-    fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    a, b = fake_ab
-    assert commands.cmd_create(str(a), str(b)) == 0
-    session_id = capsys.readouterr().out.strip()
-    session_dir = config.SESSIONS_DIR / session_id
-
-    meta = read_meta(session_dir)
-    meta.status = SessionStatus.created
-    write_meta(session_dir, meta)
-    assert commands.cmd_commit(session_id) == 2
-
-    # Reset for teardown
-    meta = read_meta(session_dir)
-    meta.status = SessionStatus.failed
-    write_meta(session_dir, meta)
-
-
-@pytest.mark.docker
-def test_cmd_commit_rejects_locked_running_session(
-    docker_available: bool,
-    rehearse_root: Path,
-    fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    a, b = fake_ab
-    assert commands.cmd_create(str(a), str(b)) == 0
-    session_id = capsys.readouterr().out.strip()
-    session_dir = config.SESSIONS_DIR / session_id
-
-    meta = read_meta(session_dir)
-    meta.status = SessionStatus.done
-    write_meta(session_dir, meta)
-
-    with workspace.flock_exclusive(workspace.run_lock_path(session_dir)):
-        assert commands.cmd_commit(session_id) == 2
-    err = capsys.readouterr().err
-    assert "running" in err
-
-    meta = read_meta(session_dir)
-    meta.status = SessionStatus.failed
-    write_meta(session_dir, meta)
-
-
-@pytest.mark.docker
-def test_cmd_commit_transitions_to_committed(
-    docker_available: bool,
-    rehearse_root: Path,
-    fake_ab: tuple[Path, Path],
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    a, b = fake_ab
-    assert commands.cmd_create(str(a), str(b)) == 0
-    session_id = capsys.readouterr().out.strip()
-    session_dir = config.SESSIONS_DIR / session_id
-
-    # Mark as done (fake: no agent ran, but status allows commit)
-    meta = read_meta(session_dir)
-    meta.status = SessionStatus.done
-    write_meta(session_dir, meta)
-
-    assert commands.cmd_commit(session_id) == 0
-    meta = read_meta(session_dir)
-    assert meta.status == SessionStatus.committed
