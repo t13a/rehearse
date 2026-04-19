@@ -2,7 +2,18 @@
 
 AI エージェントに大容量ファイルの整理を任せるためのハーネス。 symlink をステージングに使い、実ファイルは人間のレビュー後まで一切動かさない。
 
-設計の詳細は [CLAUDE.md](CLAUDE.md) と [docs/](docs/) を参照。
+## ドキュメント
+
+背景・詳細は [docs/](docs/) を参照。
+
+- [docs/overview.md](docs/overview.md) — 問題設定、symlink ステージングの着想、不変条件
+- [docs/cli.md](docs/cli.md) — コマンドと環境変数
+- [docs/sessions.md](docs/sessions.md) — ディレクトリレイアウト、状態遷移、規約
+- [docs/mirroring.md](docs/mirroring.md) — 作業ディレクトリの役割、 sticky bit によるパーミッションモデル
+- [docs/isolation.md](docs/isolation.md) — Docker マウント、道具箱
+- [docs/profiles.md](docs/profiles.md) — セッションの実行時設定
+- [docs/review.md](docs/review.md) — 人間によるレビュー方法
+- [docs/commit.md](docs/commit.md) — 冪等な commit アルゴリズム
 
 ## 必要環境
 
@@ -27,7 +38,7 @@ uv sync
 bash scripts/build-agent-codex-image.sh
 ```
 
-中身は `node:20-slim` ベースで Codex CLI、TLS ルート証明書、道具箱 (`findutils` / `tree` 等) を入れ、 `rm` / `cp` / `ln` / `chmod` / `chown` / `dd` / `truncate` を Dockerfile の最終層で削る。Codex 自体の sandbox は使わず、Docker の bind mount と agent UID を境界にする。詳細は [docker/codex/Dockerfile](docker/codex/Dockerfile) と [docs/architecture.md](docs/architecture.md) のツールボックス節を参照。
+中身は `node:20-slim` ベースで Codex CLI、TLS ルート証明書、道具箱 (`findutils` / `tree` 等) を入れ、 `rm` / `cp` / `ln` / `chmod` / `chown` / `dd` / `truncate` を Dockerfile の最終層で削る。Codex 自体の sandbox は使わず、Docker の bind mount と agent UID を境界にする。詳細は [docker/codex/Dockerfile](docker/codex/Dockerfile) と [docs/profiles.md](docs/profiles.md) の Toolbox 節を参照。
 
 Claude Code agent を使う場合は別 image をビルドする:
 
@@ -83,11 +94,11 @@ uv run rehearse purge "$SID"
 uv run rehearse create -s music-2026-04 /tmp/fakeA /tmp/fakeB
 ```
 
-`create` 直後の session directory を覗きたいとき:
+セッションの作業ディレクトリを覗きたいとき:
 
 ```bash
-ls -la ~/.local/share/rehearse/sessions/$SID/data/
-stat -c '%a %U:%G %n' ~/.local/share/rehearse/sessions/$SID/data/outbox
+uv run rehearse exec "$SID" ls -la
+uv run rehearse exec "$SID" stat -c '%a %U:%G %n' outbox
 ```
 
 - `inbox/` は agent UID/GID 所有
@@ -96,134 +107,10 @@ stat -c '%a %U:%G %n' ~/.local/share/rehearse/sessions/$SID/data/outbox
 agent image の中で手動確認したいときは `debug` を使う。mount、UID/GID、lock、状態更新は `run` と同じで、entrypoint だけを差し替える。端末から実行した場合は interactive TTY も渡す:
 
 ```bash
-uv run rehearse debug "$SID" /bin/bash
+uv run rehearse debug "$SID" bash
 uv run rehearse debug "$SID" codex --help
 uv run rehearse debug "$SID" /opt/rehearse/entrypoint.sh
 ```
-
-## プロファイル
-
-実行時設定は profile JSON に書く。 `rehearse create -p <profile> ...` で指定でき、 `-p` を省略すると `default` profile が使われる。 profile は session 作成時に `meta.json` へ転記されるので、後から profile JSON を編集しても既存 session には影響しない。
-
-profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile は初回 `create` 時に `{}` として自動作成される。各項目は省略可能で、省略時は CLI 側の既定値を使う。相対パスは `$REHEARSE_ROOT` 起点で解決される。
-
-```json
-{
-  "agent": "codex",
-  "agent_image": "rehearse-agent-codex:latest",
-  "helper_image": "busybox:latest",
-  "agent_runner": "runners/my-agent.sh",
-  "agent_uid": 1000,
-  "agent_gid": 1000,
-  "guard_uid": 65534,
-  "guard_gid": 65534,
-  "agent_instructions": "instructions/music.md",
-  "agent_timeout": 3600,
-  "agent_extra_args": "--output-format stream-json --verbose",
-  "skeleton": "codex"
-}
-```
-
-| 項目 | 既定値 | 用途 |
-|---|---|---|
-| `agent` | `codex` | 標準 agent 種別 (`codex` / `claude`) |
-| `agent_uid` | host UID | agent コンテナを走らせる UID。既定では現在の host ユーザー UID |
-| `agent_gid` | host GID | agent コンテナを走らせる GID。既定では現在の host ユーザー GID |
-| `guard_uid` | `65534` | B mirror の初期構造を守る UID。 `agent_uid` と同じ値は不可 |
-| `guard_gid` | `65534` | B mirror の初期構造を守る GID |
-| `agent_image` | `rehearse-agent-codex:latest` | agent コンテナの image。 `agent` の標準値を上書きする |
-| `helper_image` | `busybox:latest` | `scripts/docker-helper.sh` が chown / cleanup に使う root コンテナ image |
-| `agent_runner` | `<repo>/scripts/docker-runner.sh` | agent image を起動する runner。 Podman 等に差し替える場合に上書きする |
-| `agent_instructions` | `<repo>/instructions/default.md` | session 作成時に agent work dir (`data/AGENTS.md`) へコピーする agent instructions。相対パスは `$REHEARSE_ROOT` 起点 |
-| `agent_timeout` | `3600` | container 内で `timeout` が agent CLI に与える秒数 |
-| `agent_extra_args` | `null` | agent CLI に渡す追加引数 (スペース区切り) |
-| `skeleton` | `default` | agent home (`sessions/<id>/home/agent/`) にコピーする home skeleton 名 |
-
-## Agent instructions
-
-agent への恒久的な作業指示は、session 作成時に agent work dir の `data/AGENTS.md` としてコピーされる。Claude Code 互換のため、同じ場所に `CLAUDE.md -> AGENTS.md` の相対 symlink も作る。Codex / Claude Code には instructions の内容を prompt として渡さず、各 agent の native な discovery に任せる。
-
-既定では repo 内の `instructions/default.md` を使う。用途ごとに差し替える場合は `$REHEARSE_ROOT` 配下に instructions file を置き、profile の `agent_instructions` で指定する:
-
-```json
-{
-  "agent_instructions": "instructions/music.md"
-}
-```
-
-`rehearse run -m ...` で渡すのは、その実行に限ったカスタム指示だけ。 `-m` を省略した場合、entrypoint は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` という短い既定指示だけを agent CLI に渡す。
-
-## Home skeleton
-
-agent home の初期状態は `$REHEARSE_ROOT/skeletons/<name>/` に置ける。 `rehearse create` は profile の `skeleton` で指定された skeleton を `sessions/<id>/home/agent/` にコピーし、その後 agent UID/GID に chown する。 symlink は symlink のままコピーされる。
-
-`skeleton` 未指定時は `default`。 `skeletons/default/` は初回 `create` 時に空ディレクトリとして自動作成されるので、後から自由にカスタマイズできる。
-
-Codex CLI 用に ChatGPT login cache を持ち込む例。 headless 環境へ `~/.codex/auth.json` をコピーする方法は [OpenAI の Codex authentication docs](https://developers.openai.com/codex/auth#login-on-headless-devices) でも案内されている。
-
-```bash
-mkdir -p "$HOME/.local/share/rehearse/skeletons/codex/.codex"
-cp "$HOME/.codex/auth.json" \
-  "$HOME/.local/share/rehearse/skeletons/codex/.codex/auth.json"
-
-cat > "$HOME/.local/share/rehearse/profiles/codex.json" <<'JSON'
-{
-  "agent": "codex",
-  "skeleton": "codex"
-}
-JSON
-```
-
-agent 起動前に環境変数や PATH を調整したい場合は、 skeleton に `.rehearse/agent/init.sh` を置く。 entrypoint は agent CLI を起動する前にこのファイルを source する。通常の shell script なので、agent process に渡したい環境変数は明示的に `export` する:
-
-```bash
-mkdir -p "$HOME/.local/share/rehearse/skeletons/codex/.rehearse/agent"
-cat > "$HOME/.local/share/rehearse/skeletons/codex/.rehearse/agent/init.sh" <<'SH'
-export OPENROUTER_API_KEY=sk-or-...
-export PATH="$HOME/bin:$PATH"
-SH
-```
-
-`.rehearse/agent/init.sh` は agent startup 用の escape hatch で、 provider API key などの secret を含み得る。 `auth.json` と同様に password と同じ扱いにすること。 session の git snapshot は `data/` だけを追跡するため `home/agent/.codex/auth.json` や `home/agent/.rehearse/agent/init.sh` は記録されない。 session directory は `purge` まで残るので copied secret も残り、 `purge` で削除される。
-
-## 環境変数
-
-ユーザー向けの host 環境変数は `REHEARSE_ROOT` だけ。 agent / Docker / skeleton の設定は profile JSON と skeleton に書く。 provider API key は host から pass-through せず、 skeleton の `.rehearse/agent/init.sh` か agent ネイティブ設定に置く。
-
-| 変数 | 既定値 | 用途 |
-|---|---|---|
-| `REHEARSE_ROOT` | `~/.local/share/rehearse` | session / lock / profile / skeleton の置き場 |
-
-MCP など agent 固有の設定は profile ではなく、 skeleton に含める agent-native config に置く。Codex なら `.codex/config.toml`、Claude Code なら Claude Code が読む agent home 配下の設定ファイルを skeleton で持ち込む。
-
-### runner の差し替え
-
-既定の `scripts/docker-runner.sh` は Docker で agent image を起動する。Claude Code を使う場合は:
-
-```bash
-mkdir -p "$HOME/.local/share/rehearse/profiles"
-cat > "$HOME/.local/share/rehearse/profiles/claude.json" <<'JSON'
-{
-  "agent": "claude"
-}
-JSON
-```
-
-別の agent を試したいときや、 API キー無しで挙動だけ確認したいときは:
-
-```bash
-mkdir -p "$HOME/.local/share/rehearse/profiles"
-cat > "$HOME/.local/share/rehearse/profiles/opencode.json" <<'JSON'
-{
-  "agent_runner": "/path/to/your-runner.sh",
-  "agent_image": "your-image:latest"
-}
-JSON
-
-uv run rehearse create -p opencode /tmp/fakeA /tmp/fakeB
-```
-
-runner script は環境変数 `REHEARSE_SESSION_*` / `REHEARSE_AGENT_*` から必要な情報を受け取る。契約の詳細は [docs/architecture.md](docs/architecture.md) の「agent runner」節を参照。テスト時に同じ仕組みで使われる軽量 runner は [tests/fake-runner.sh](tests/fake-runner.sh) にある。
 
 ## 後片付けの注意
 
@@ -243,16 +130,3 @@ docker run --rm --user 0:0 \
   busybox:latest \
   rm -rf "$HOME/.local/share/rehearse/sessions"
 ```
-
-## バックログ
-
-- 仕様変更
-  - 🎯 `~/.rehearse` を既定の `$REHEARSE_ROOT` にする
-- 機能追加
-  - 🎯 一括削除 (`rehearse purge SID1 SID2...`)
-  - 🎯 Gemini CLI に対応する
-  - 🎯 OpenCode に対応する
-- リリース準備
-  - 🎯 `LICENSE` を追加する
-  - 🎯 CLI をパッケージ化 (またはコンテナ化) する
-  - 🎯 GitHub Actions で各種コンテナイメージをビルド・プッシュする (Claude Code 以外)

@@ -1,4 +1,4 @@
-# commit アルゴリズム
+# Commit
 
 ## 基本方針
 
@@ -9,67 +9,6 @@
 1. **冪等** — 中断されても同じコマンドを再実行するだけで残り分を処理できる
 2. **同一 fs の atomicity に乗る** — 個別の `rename(2)` は atomic なので、中断状態は常に「一部移動済み・残り未移動」の形だけ
 3. **衝突検出** — 予期しない状態 (A 側実ファイルが消え B 側にもない等) は即 abort
-
-## 擬似コード
-
-```python
-def commit(session_dir: Path, A: Path, B: Path, log: LogFile):
-    data = session_dir / "data"
-    outbox = data / "outbox"
-    a_prefix = str(data / "refs" / "a") + "/"
-    b_prefix = str(data / "refs" / "b") + "/"
-
-    for entry in walk(outbox):
-        if entry.is_symlink():
-            handle_symlink(entry, outbox, A, B, a_prefix, b_prefix, log)
-        elif entry.is_file():
-            # .FYI.md のような実ファイル → B には移動しない
-            continue
-
-def handle_symlink(link: Path, outbox: Path, A: Path, B: Path,
-                   a_prefix: str, b_prefix: str, log: LogFile):
-    target = os.readlink(link)            # 文字列としての target
-    rel = link.relative_to(outbox)        # outbox/ からの相対パス
-    dst = B / rel                          # 実 B 内の配置先
-
-    if target.startswith(a_prefix):
-        # A 由来 → 実ファイルを移動する必要がある
-        src = resolve_target_to_real_A(target, a_prefix, A)
-
-        if src.exists() and not dst.exists():
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            os.rename(src, dst)            # 同一 fs なので atomic
-            log.append("moved", src=src, dst=dst)
-
-        elif not src.exists() and dst.exists():
-            # 既に移動済み (resume 対応)
-            log.append("already-moved", src=src, dst=dst)
-
-        elif src.exists() and dst.exists():
-            # 衝突: agent の計画と B の現状が不整合
-            log.append("conflict", src=src, dst=dst)
-            raise CommitAbort(f"both src and dst exist: {src} / {dst}")
-
-        else:
-            # src も dst もない = 予期しない状態
-            log.append("missing", src=src, dst=dst)
-            raise CommitAbort(f"neither src nor dst exists: {src} / {dst}")
-
-    elif target.startswith(b_prefix):
-        # 既存 B への symlink: 何もしない (agent が動かさなかった entry)
-        pass
-
-    else:
-        # session directory 起点でないパス = 想定外
-        log.append("unexpected-target", target=target)
-        raise CommitAbort(f"unexpected symlink target: {target}")
-
-def resolve_target_to_real_A(target: str, a_prefix: str, A: Path) -> Path:
-    # target が "/opt/rehearse/sessions/<id>/data/refs/a/foo.flac" のとき
-    # a_prefix を剥いで A/foo.flac にマップする
-    suffix = target[len(a_prefix):]
-    return A / suffix
-```
 
 ## なぜ session directory 起点の absolute path で比較するか
 
@@ -127,3 +66,23 @@ commit.log は構造化 (JSONL 推奨) で書く:
 ```
 
 abort 時は最後のエントリが原因。 resume や手動リカバリの際に参照する。
+
+
+## B に対する排他制御
+
+`commit` は実ファイルを B に対して `rename(2)` するので、同じ B に対する並行 commit は衝突する可能性がある。そこで `commit` 開始時に `${REHEARSE_ROOT}/locks/b-<hash>.lock` を `flock` で排他取得する (advisory なので rehearse プロセス同士のみ対象、外部プログラムや agent は無関係)。
+
+`create` / `run` は B を read-only でしか触らないのでロックは取らない。自動 session id の採番は `mkdir(2)` の atomicity に任せて、 EEXIST なら +1 で retry する。名前付き session id は同じく `mkdir(2)` で衝突検出し、既存なら retry せず失敗する (flock 不要)。
+
+## コミット後の作業ディレクトリの姿
+
+`commit` 実行後、作業ディレクトリはこのような状態になる:
+
+- `inbox/` の symlink は dead (target の実ファイルが B に移動したので壊れている)
+- `outbox/` の symlink も dead (同上)
+- ただし symlink **自体** (文字列) と `.FYI.md` は残る
+- `readlink inbox/foo.flac` → `$HOME/.local/share/rehearse/sessions/<id>/refs/a/foo.flac` (文字列としては読める)
+- 「元は A のどこにあって、 agent が B のどこに置こうとしたか」の記録が完全に残る
+- 後日の振り返り、ルール改善、学習データとして使える
+
+物理コストは symlink 1 個あたり数十バイト。 10k ファイルでも 1MB 未満なので、古いセッションを残しておくコストは無視できる。
