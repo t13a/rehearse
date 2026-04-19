@@ -58,10 +58,9 @@ stateDiagram-v2
 |---|---|
 | `created` | `rehearse create` が session directory を構築した直後、まだ `run` していない |
 | `running` | セッションの run lock が保持され、agent runner が稼働中 |
-| `done` | `outbox/.done` が存在する状態で container 正常終了 |
-| `failed` | `outbox/.done` なしで container 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
+| `done` | `outbox/.done` が存在する状態で agent runner 終了 |
+| `failed` | `outbox/.done` なしで agent runner 終了 (agent の自主終了 / timeout / crash をまとめたもの。終了理由は `meta.json` の `exit_reason` に記録) |
 | `committed` | `commit` が完了し、実ファイルが A→B に移動済み |
-| `purged` | session directory が物理削除された |
 
 `done` と `failed` の区別は重要。 `done` は「 agent が自分で完了と判断した」正常系。 `failed` は agent が完走しなかった異常系で、レビュー時に扱いを変えることがある。 harness の挙動 (commit/run) は両者で同じなので、状態としては 2 つに畳んでいる。
 
@@ -75,7 +74,7 @@ runner 終了後、harness は exit code と `outbox/.done` の有無から `met
 
 | 条件 | 状態 | `exit_reason` |
 |---|---|---|
-| exit 0 + `outbox/.done` あり | `done` | `normal` |
+| `outbox/.done` あり | `done` | `normal` |
 | exit 124 / 137 | `failed` | `timeout` |
 | その他 | `failed` | `exit=N` |
 
@@ -126,8 +125,6 @@ outbox/music/
 
 1. A と B が同一ファイルシステムか (commit 時の `rename(2)` atomicity のため)
 2. A と B が symlink を含まないか (含む場合は中断)
-3. A と B のファイルシステムが symlink をサポートするか
-4. ディレクトリの作成権限
 
 ### timeout の扱い
 
@@ -135,4 +132,4 @@ runner が組み立てる image の entrypoint は `timeout --kill-after=10 ${RE
 
 - 上限秒数経過で SIGTERM、 10 秒待っても落ちなければ SIGKILL
 - `timeout` の終了コードは SIGTERM 経路で 124、 SIGKILL 経路で 137
-- harness の `cmd_run` は exit code 124/137 をまとめて `exit_reason="timeout"` として記録する
+- harness は exit code 124/137 をまとめて `exit_reason="timeout"` として記録する

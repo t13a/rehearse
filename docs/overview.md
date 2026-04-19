@@ -37,7 +37,7 @@ agent はセッション中、`inbox/` にある symlink を `outbox/` の「置
 以下が機構的に保証されていれば、agent が何をしようが実ファイルの損害はゼロに抑えられる:
 
 1. **セッション中、`A` と `B` の実ファイルは一切変化しない** (read-only マウント + symlink 越しの操作)
-2. **agent は symlink を `mv` で動かすこと以外できない** (`rm` / `cp` / `ln` などを道具箱から除外)
+2. **agent は実ファイルを直接変更できず、配置は symlink の `mv` で表現する** (`rm` / `cp` / `ln` などを道具箱から除外)
 3. **symlink は絶対パス** (相対だと `mv` で壊れる)
 4. **`refs/` 直下のディレクトリ構造 (session directory 親) は agent から書き換え不可** (親の write 権限を落とす)
 

@@ -11,7 +11,6 @@ cd ~/.local/share/rehearse/sessions/<id>
 git status                     # 変更された symlink / 追加された実ファイルの一覧
 git diff                       # target (= プロビナンス) の変化を読む
 cat data/outbox/**/FYI.md           # agent が残した補足を拾う (あれば)
-less data/transcript.jsonl     # 判断根拠を遡りたいとき
 ```
 
 - symlink の blob は target 文字列そのままなので、 `mv` だけの移動は rename 検出が自動で効く

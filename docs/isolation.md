@@ -2,7 +2,6 @@
 
 - **Docker container** を採用 (systemd-nspawn / bubblewrap も候補だが情報量と既存 tooling で Docker が有利)
 - **network**: 必要に応じて有効 (Web 検索を MCP 経由でさせる場合)
-- **timeout**: 外部 watcher が N 分後に `docker kill` する
 - **リソース制限**: cgroup 経由で cheap に付けられる (必要に応じて)
 - **user namespace**: エージェントの UID は host の unprivileged user にマップする
 
@@ -86,5 +85,5 @@ provider API key のような agent process 用の環境変数は runner から 
 
 理由は二つ:
 
-1. **テスタビリティ**: 本物の agent image と API key / auth cache を要求すると lifecycle テストが回せない。 profile の `agent_runner` を `tests/fake-runner.sh` に差し替えると、 busybox だけで Step 2 相当のテストが動く
+1. **テスタビリティ**: 本物の agent image と API key / auth cache を要求すると lifecycle テストが回せない。 profile の `agent_runner` を `tests/fake-runner.sh` に差し替えると、 busybox だけで lifecycle テストや CLI テストが動く
 2. **agent の交換可能性**: 将来 Codex CLI / Claude Code を OpenCode やローカル LLM ベースの agent に差し替えるとき、 Python 側を一切いじらず、 runner script を新しい agent 用に書き直すだけで済む

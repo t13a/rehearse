@@ -79,9 +79,9 @@ abort 時は最後のエントリが原因。 resume や手動リカバリの際
 `commit` 実行後、作業ディレクトリはこのような状態になる:
 
 - `inbox/` の symlink は dead (target の実ファイルが B に移動したので壊れている)
-- `outbox/` の symlink も dead (同上)
+- `outbox/` の symlink は B 由来のものは live、 A 由来のものは dead
 - ただし symlink **自体** (文字列) と `.FYI.md` は残る
-- `readlink inbox/foo.flac` → `$HOME/.local/share/rehearse/sessions/<id>/refs/a/foo.flac` (文字列としては読める)
+- `readlink inbox/foo.flac` → `$HOME/.local/share/rehearse/sessions/<id>/data/refs/a/foo.flac` (文字列としては読める)
 - 「元は A のどこにあって、 agent が B のどこに置こうとしたか」の記録が完全に残る
 - 後日の振り返り、ルール改善、学習データとして使える
 

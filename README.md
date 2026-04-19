@@ -64,11 +64,15 @@ uv run pytest tests/test_cli.py -v        # docker 必須
 
 ## 手動で動かす
 
-事前に image をビルドし、Codex CLI の認証情報を用意する。ChatGPT login cache や provider API key は [Home skeleton](#home-skeleton) で持ち込む:
+以下は Codex CLI の例。
+
+事前に image をビルド:
 
 ```bash
 bash scripts/build-agent-codex-image.sh
 ```
+
+Codex CLI の認証情報を用意する。 ChatGPT login cache や provider API key の持ち込み方法は [docs/profiles.md](docs/profiles.md) の Agent home skeleton を参照。
 
 A と B を適当に作って `create` → `run` → `status` → `commit` → `purge` と一周させる例:
 
@@ -80,7 +84,7 @@ echo legacy > /tmp/fakeB/existing/old.txt
 
 SID=$(uv run rehearse create /tmp/fakeA /tmp/fakeB)
 uv run rehearse status
-uv run rehearse run "$SID"            # Codex CLI 起動。終わると outbox/.done が生える
+uv run rehearse run "$SID"            # Codex CLI 起動。成功すると outbox/.done が生える
 uv run rehearse status "$SID"
 ls ~/.local/share/rehearse/sessions/"$SID"/data/outbox/
 (cd ~/.local/share/rehearse/sessions/"$SID" && git status)
