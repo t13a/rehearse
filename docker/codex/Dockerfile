@@ -28,4 +28,7 @@ RUN /usr/bin/rm -f \
     /usr/bin/truncate \
     /usr/bin/rm /bin/rm
 
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
 ENTRYPOINT ["/opt/rehearse/entrypoint.sh"]
