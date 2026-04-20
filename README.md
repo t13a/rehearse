@@ -43,9 +43,11 @@ The executable is written to `dist/rehearse`. The bundle includes the default ag
 Build the agent images locally before first use:
 
 ```bash
-bash scripts/build-agent-codex-image.sh  # for Codex CLI
-bash scripts/build-agent-claude-image.sh # for Claude Code
+uv run rehearse build-image codex  # for Codex CLI
+uv run rehearse build-image claude # for Claude Code
 ```
+
+When using the single-file executable, replace `uv run rehearse` with `dist/rehearse` or the installed executable path.
 
 > Note: The Claude Code agent image is intended for local use only. The Dockerfile installs Anthropic's proprietary Claude Code software, which is not covered by this repository's MIT license. Do not redistribute built Claude Code agent images; follow Anthropic's license terms.
 
@@ -62,7 +64,7 @@ The following example uses Codex CLI.
 Build the image first:
 
 ```bash
-bash scripts/build-agent-codex-image.sh
+uv run rehearse build-image codex
 ```
 
 Prepare Codex CLI credentials. For ChatGPT login cache and provider API key setup, see "Agent home skeleton" in [docs/profiles.md](docs/profiles.md).
