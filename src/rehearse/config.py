@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from rehearse import resource
+
 
 def _env_path(name: str, default: Path) -> Path:
     value = os.environ.get(name)
@@ -15,7 +17,6 @@ REHEARSE_ROOT: Path = _env_path(
     "REHEARSE_ROOT", Path.home() / ".local" / "share" / "rehearse"
 )
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_AGENT: str = "codex"
 DEFAULT_AGENT_UID: int = os.getuid()
 DEFAULT_AGENT_GID: int = os.getgid()
@@ -25,9 +26,9 @@ DEFAULT_CODEX_AGENT_IMAGE: str = "rehearse-agent-codex:latest"
 DEFAULT_CLAUDE_AGENT_IMAGE: str = "rehearse-agent-claude:latest"
 DEFAULT_HELPER_IMAGE: str = "busybox:latest"
 DEFAULT_AGENT_TIMEOUT: int = 3600
-DEFAULT_AGENT_INSTRUCTIONS: Path = _REPO_ROOT / "instructions" / "default.md"
-DEFAULT_AGENT_RUNNER: Path = _REPO_ROOT / "scripts" / "docker-runner.sh"
-DEFAULT_DOCKER_HELPER: Path = _REPO_ROOT / "scripts" / "docker-helper.sh"
+DEFAULT_AGENT_INSTRUCTIONS: Path = resource.path("instructions", "default.md")
+DEFAULT_AGENT_RUNNER: Path = resource.path("scripts", "docker-runner.sh")
+DEFAULT_DOCKER_HELPER: Path = resource.path("scripts", "docker-helper.sh")
 
 SESSIONS_DIR: Path = REHEARSE_ROOT / "sessions"
 LOCKS_DIR: Path = REHEARSE_ROOT / "locks"

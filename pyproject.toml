@@ -12,6 +12,7 @@ rehearse = "rehearse.cli:main"
 
 [dependency-groups]
 dev = [
+    "pyinstaller>=6.19.0",
     "pytest>=8.0",
 ]
 

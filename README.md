@@ -28,6 +28,16 @@ uv sync
 
 This installs dependencies into `.venv/` and makes the `rehearse` command available through `uv run`.
 
+## Build a Single-File Executable
+
+Use PyInstaller when you want to distribute `rehearse` as one executable:
+
+```bash
+uv run pyinstaller rehearse.spec
+```
+
+The executable is written to `dist/rehearse`. The bundle includes the default agent instructions, runner/helper scripts, and Docker image build files.
+
 ## Build Agent Images
 
 Build the agent images locally before first use:

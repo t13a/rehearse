@@ -30,8 +30,8 @@ profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile
 | `guard_gid` | `65534` | B mirror の初期構造を守る GID |
 | `agent_image` | `rehearse-agent-codex:latest` | agent コンテナの image。 `agent` の標準値を上書きする |
 | `helper_image` | `busybox:latest` | `scripts/docker-helper.sh` が chown / cleanup に使う root コンテナ image |
-| `agent_runner` | `<repo>/scripts/docker-runner.sh` | agent image を起動する runner。 Podman 等に差し替える場合に上書きする |
-| `agent_instructions` | `<repo>/instructions/default.md` | session 作成時に agent work dir (`work/AGENTS.md`) へコピーする agent instructions。相対パスは `$REHEARSE_ROOT` 起点 |
+| `agent_runner` | bundled `scripts/docker-runner.sh` | agent image を起動する runner。 Podman 等に差し替える場合に上書きする |
+| `agent_instructions` | bundled `instructions/default.md` | session 作成時に agent work dir (`work/AGENTS.md`) へコピーする agent instructions。相対パスは `$REHEARSE_ROOT` 起点 |
 | `agent_timeout` | `3600` | container 内で `timeout` が agent CLI に与える秒数 |
 | `agent_extra_args` | `null` | agent CLI に渡す追加引数 (スペース区切り) |
 | `skeleton` | `default` | agent home (`sessions/<id>/home/agent/`) にコピーする home skeleton 名 |
@@ -80,7 +80,7 @@ agent ごとの小さなヘルパーや provider 固有の環境変数は image 
 
 agent への恒久的な作業指示は、session 作成時に agent work dir の `work/AGENTS.md` としてコピーされる。Claude Code 互換のため、同じ場所に `CLAUDE.md -> AGENTS.md` の相対 symlink も作る。Codex / Claude Code には instructions の内容を prompt として渡さず、各 agent の native な discovery に任せる。
 
-既定では repo 内の `instructions/default.md` を使う。用途ごとに差し替える場合は `$REHEARSE_ROOT` 配下に instructions file を置き、profile の `agent_instructions` で指定する:
+既定では bundled `instructions/default.md` を使う。用途ごとに差し替える場合は `$REHEARSE_ROOT` 配下に instructions file を置き、profile の `agent_instructions` で指定する:
 
 ```json
 {

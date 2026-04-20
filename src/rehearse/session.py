@@ -17,14 +17,14 @@ from rehearse import (
     lock,
     mirror,
     profile as profile_mod,
+    resource,
     skeleton,
     validate,
 )
 from rehearse.profile import PROFILE_NAME_RE
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-GIT_SNAPSHOT_SCRIPT = REPO_ROOT / "scripts" / "git-snapshot.sh"
+GIT_SNAPSHOT_SCRIPT = resource.path("scripts", "git-snapshot.sh")
 
 
 class SessionIdError(RuntimeError):
