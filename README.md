@@ -74,7 +74,7 @@ bash scripts/build-agent-codex-image.sh
 
 Codex CLI の認証情報を用意する。 ChatGPT login cache や provider API key の持ち込み方法は [docs/profiles.md](docs/profiles.md) の Agent home skeleton を参照。
 
-A と B を適当に作って `create` → `run` → `status` → `commit` → `purge` と一周させる例:
+A と B を適当に作って `create` → `run` → `status` → `commit` → `delete` と一周させる例:
 
 ```bash
 mkdir -p /tmp/fakeA/sub /tmp/fakeB/existing
@@ -89,7 +89,7 @@ uv run rehearse status "$SID"
 ls ~/.local/share/rehearse/sessions/"$SID"/work/outbox/
 (cd ~/.local/share/rehearse/sessions/"$SID" && git status)
 uv run rehearse commit "$SID"         # outbox/ の配置に従って A→B にファイル移動
-uv run rehearse purge "$SID"
+uv run rehearse delete "$SID"
 ```
 
 セッション ID を自分で決めたい場合は `-s` を指定する。使える文字は profile 名と同じ英数字、 `_`、`-`、`.`:
@@ -121,7 +121,7 @@ uv run rehearse debug "$SID" /opt/rehearse/entrypoint.sh
 agent UID/GID の既定値は host UID/GID なので、agent が agent work dir の `outbox/` に持ち込んだ配置物や agent home (`home/agent/`) は host 側から手動編集しやすい。一方、B mirror の初期構造は guard UID/GID 所有の sticky directory で守られる。 skeleton からコピーした `home/agent/` 内の secret も session と一緒に残る。 session directory を丸ごと消すときは必ず:
 
 ```bash
-uv run rehearse purge <session_id>
+uv run rehearse delete <session_id>
 ```
 
 を経由すること。内部で `scripts/docker-helper.sh` 経由の root コンテナを 1 発叩いて `rm -rf` する。

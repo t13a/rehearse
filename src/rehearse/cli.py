@@ -49,9 +49,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_debug.add_argument("argv", nargs=argparse.REMAINDER)
     p_debug.set_defaults(func=_cmd_debug)
 
-    p_purge = sub.add_parser("purge", help="delete a session")
-    p_purge.add_argument("session_id")
-    p_purge.set_defaults(func=_cmd_purge)
+    p_delete = sub.add_parser("delete", help="delete a session")
+    p_delete.add_argument("session_id")
+    p_delete.set_defaults(func=_cmd_delete)
 
     p_commit = sub.add_parser("commit", help="commit a session's plan")
     p_commit.add_argument("session_id")
@@ -164,12 +164,12 @@ def _cmd_run_like(
     return 0 if session.is_done(meta.status) else 1
 
 
-def _cmd_purge(args: argparse.Namespace) -> int:
+def _cmd_delete(args: argparse.Namespace) -> int:
     session_dir = session.resolve_session_dir(args.session_id)
     meta = session.read_meta(session_dir)
     status = session.status_for_guards(session_dir, meta)
     if session.is_running(status):
-        print("cannot purge a running session", file=sys.stderr)
+        print("cannot delete a running session", file=sys.stderr)
         return 2
     try:
         effective_profile = profile_mod.effective_profile(meta.profile)

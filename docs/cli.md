@@ -38,7 +38,7 @@
 - `meta.json` の status を `committed` に更新
 - 詳細: [commit.md](commit.md)
 
-### `rehearse purge <session>`
+### `rehearse delete <session>`
 
 - session directory を物理削除
 - どの永続状態からでも実行可能 (`created` / `done` / `failed` / `committed`)

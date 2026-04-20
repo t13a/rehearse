@@ -119,4 +119,4 @@ export PATH="$HOME/bin:$PATH"
 SH
 ```
 
-`.rehearse/agent/init.sh` は agent startup 用の escape hatch で、 provider API key などの secret を含み得る。 `auth.json` と同様に password と同じ扱いにすること。 session の git snapshot は `work/` だけを追跡するため `home/agent/.codex/auth.json` や `home/agent/.rehearse/agent/init.sh` は記録されない。 session directory は `purge` まで残るので copied secret も残り、 `purge` で削除される。
+`.rehearse/agent/init.sh` は agent startup 用の escape hatch で、 provider API key などの secret を含み得る。 `auth.json` と同様に password と同じ扱いにすること。 session の git snapshot は `work/` だけを追跡するため `home/agent/.codex/auth.json` や `home/agent/.rehearse/agent/init.sh` は記録されない。 session directory は `delete` まで残るので copied secret も残り、 `delete` で削除される。

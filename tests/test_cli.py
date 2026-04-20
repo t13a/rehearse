@@ -1,4 +1,4 @@
-"""CLI controller tests: create -> run/debug -> commit -> purge."""
+"""CLI controller tests: create -> run/debug -> commit -> delete."""
 
 from __future__ import annotations
 
@@ -65,11 +65,11 @@ def test_full_lifecycle(
     assert _hash_tree(a) == a_hash_before
     assert _hash_tree(b) == b_hash_before
 
-    assert cli.main(["purge", session_id]) == 0
+    assert cli.main(["delete", session_id]) == 0
     assert not session_dir.exists()
 
 
-def test_cannot_purge_locked_running_session(
+def test_cannot_delete_locked_running_session(
     docker_available: bool,
     rehearse_root: Path,
     fake_ab: tuple[Path, Path],
@@ -80,7 +80,7 @@ def test_cannot_purge_locked_running_session(
     session_dir = config.SESSIONS_DIR / session_id
 
     with lock.flock_exclusive(session.run_lock_path(session_dir)):
-        assert cli.main(["purge", session_id]) == 2
+        assert cli.main(["delete", session_id]) == 2
     err = capsys.readouterr().err
     assert "running" in err
 

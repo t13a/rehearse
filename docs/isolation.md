@@ -47,7 +47,7 @@ Codex CLI や Claude Code は agent home 配下に認証情報、設定、会話
 - FHS に沿った `/home/agent` を選んだのは、一般的な CLI agent が前提とする「ホームディレクトリらしい場所」と整合させるため
 - ホスト側のパスが `sessions/<id>/home/agent` なのは session directory レイアウトの対称性を取るため
 
-コピーは symlink を symlink のまま保つ。 skeleton は雛形で、 agent home は独立したコピーなので、 agent が `.codex/auth.json` などを更新しても skeleton 側には書き戻さない。 session directory は `purge` まで残るため copied secret も残る。 `purge` で session directory を消すと agent home も一緒に消える。短期セッションでは履歴を後から振り返れるし、長期では `purge` 一発で掃除できる。
+コピーは symlink を symlink のまま保つ。 skeleton は雛形で、 agent home は独立したコピーなので、 agent が `.codex/auth.json` などを更新しても skeleton 側には書き戻さない。 session directory は `delete` まで残るため copied secret も残る。 `delete` で session directory を消すと agent home も一緒に消える。短期セッションでは履歴を後から振り返れるし、長期では `delete` 一発で掃除できる。
 
 セッション開始時の git snapshot は `work/` だけを追跡するので、 `home/agent/.codex/auth.json` のような agent home 配下のファイルは session git repo に入らない。
 
@@ -71,7 +71,7 @@ harness は以下の環境変数を runner にエクスポートする:
 
 runner は上記だけを使って `docker run` を組み立て、 container の exit code を自分の exit code としてそのまま返す。 harness はその数字だけを観察する。`debug` は同じ runner 契約で agent image を起動し、Docker の entrypoint だけを差し替える。これにより `/bin/bash` で agent home を確認したり、`/opt/rehearse/entrypoint.sh` を手動起動して通常 run と同じ経路を再現できる。
 
-`running` は Docker など特定の runtime ではなく、 `REHEARSE_SESSION_RUN_LOCK` の `flock` から導出する。 runner が lock を握っている間だけ `status` / `commit` / `purge` は session を実行中として扱う。プロセス終了時には OS が lock を解放するため、 `Ctrl+C` や runner crash の後に stale な `running` が残らない。
+`running` は Docker など特定の runtime ではなく、 `REHEARSE_SESSION_RUN_LOCK` の `flock` から導出する。 runner が lock を握っている間だけ `status` / `commit` / `delete` は session を実行中として扱う。プロセス終了時には OS が lock を解放するため、 `Ctrl+C` や runner crash の後に stale な `running` が残らない。
 
 これらの `REHEARSE_AGENT_*` は harness と runner の内部契約であり、ユーザー向け設定ではない。ユーザーは `$REHEARSE_ROOT/profiles/<name>.json` に `agent` / `agent_image` / `agent_uid` / `guard_uid` / `agent_timeout` などを書き、 `rehearse create -p <name> ...` で session に転記する。 guard UID/GID は create 時の ownership setup にだけ使い、 runner には渡さない。
 

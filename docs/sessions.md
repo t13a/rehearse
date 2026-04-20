@@ -2,7 +2,7 @@
 
 ## ディレクトリレイアウト
 
-1 セッション = 1 ディレクトリ。セッション終了後も audit 記録として残す (物理削除は `purge` コマンドで明示的に実行)。
+1 セッション = 1 ディレクトリ。セッション終了後も audit 記録として残す (物理削除は `delete` コマンドで明示的に実行)。
 
 ```
 ~/.local/share/rehearse/sessions/<session-id>/
@@ -49,7 +49,7 @@ stateDiagram-v2
       }
     }
     not_running --> running : rehearse run (追加指示)
-    not_running --> [*] : rehearse purge
+    not_running --> [*] : rehearse delete
 ```
 
 ## 状態の定義
