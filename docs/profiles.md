@@ -43,6 +43,8 @@ profile は `$REHEARSE_ROOT/profiles/<name>.json` に置く。 `default` profile
 - Codex (`docker/codex/Dockerfile`)
 - Claude Code (`docker/claude/Dockerfile`)
 
+> Note: Claude Code agent image はローカル利用向けです。`docker/claude/Dockerfile` は Anthropic のプロプライエタリ・ソフトウェアである Claude Code をインストールします。ビルド済みの Claude Code agent image は、この repository の MIT license では再配布できません。Anthropic のライセンス条件に従ってください。
+
 エージェント自体の sandbox を無効化し、Docker の bind mount と agent UID を containment boundary とする。
 
 ### Toolbox

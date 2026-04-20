@@ -2,6 +2,10 @@ FROM node:20-slim
 
 # coreutils ships with the base image (timeout, ls, stat, ...). Add the
 # missing pieces of the rehearse toolbox: find/xargs and tree.
+#
+# This image installs Anthropic's proprietary Claude Code software. Built
+# images are intended for local use only. Do not redistribute them unless
+# Anthropic's license terms allow it.
 RUN apt-get update \
  && apt-get install --no-install-recommends -y ca-certificates curl findutils tree \
  && rm -rf /var/lib/apt/lists/* \

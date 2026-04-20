@@ -37,6 +37,8 @@ bash scripts/build-agent-codex-image.sh  # for Codex CLI
 bash scripts/build-agent-claude-image.sh # for Claude Code
 ```
 
+> Note: The Claude Code agent image is intended for local use only. The Dockerfile installs Anthropic's proprietary Claude Code software, which is not covered by this repository's MIT license. Do not redistribute built Claude Code agent images; follow Anthropic's license terms.
+
 ## Tests
 
 ```bash
