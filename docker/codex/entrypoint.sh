@@ -14,8 +14,7 @@ fi
 cd "${REHEARSE_AGENT_WORK_DIR:-/mnt}"
 
 global_args=(
-  --ask-for-approval never
-  --sandbox danger-full-access
+  --yolo
 )
 
 if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then

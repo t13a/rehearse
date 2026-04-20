@@ -49,10 +49,7 @@ def test_codex_entrypoint_runs_exec_with_prompt_argument(
     assert result.returncode == 0, result.stderr
     argv = argv_dump.read_text().splitlines()
     assert argv == [
-        "--ask-for-approval",
-        "never",
-        "--sandbox",
-        "danger-full-access",
+        "--yolo",
         "--oss",
         "exec",
         "--skip-git-repo-check",
@@ -174,15 +171,10 @@ def test_codex_entrypoint_resumes_existing_session(
 
     assert result.returncode == 0, result.stderr
     argv = argv_dump.read_text().splitlines()
-    assert argv[:6] == [
-        "--ask-for-approval",
-        "never",
-        "--sandbox",
-        "danger-full-access",
+    assert argv == [
+        "--yolo",
         "--oss",
         "exec",
-    ]
-    assert argv[6:] == [
         "resume",
         "--last",
         "--skip-git-repo-check",
