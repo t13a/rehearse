@@ -7,10 +7,10 @@
 ```
 ~/.local/share/rehearse/sessions/<session-id>/
 ├── .git/                    # レビュー用スナップショット (harness 所有、 agent 視界外)
-├── .gitignore               # data/ 以外を除外
+├── .gitignore               # work/ 以外を除外
 ├── meta.json                # 起動時刻, A の実パス, B の実パス, scope, status
 ├── commit.log               # commit 時に追記
-└── data/                    # agent work dir。コンテナにマウントされる唯一のサブツリー
+└── work/                    # agent work dir。コンテナにマウントされる唯一のサブツリー
     ├── refs/
     │   ├── a -> /host/path/A    # A への symlink (read-only 参照)
     │   └── b -> /host/path/B    # B への symlink (read-only 参照)
@@ -21,15 +21,15 @@
 
 `<session-id>` は既定では UNIX 秒 (`1744296235` のような 10 桁文字列)。ソート可能で短いので、 symlink target に繰り返し現れても agent の入力トークンやレビュー負荷を圧迫しない。秒内衝突は `mkdir(2)` の atomicity で検知して +1 retry する。`rehearse create -s SID` を使うと任意の名前付き session id を指定できる。使える文字は profile 名と同じ英数字、 `_`、`-`、`.` で、既存 session との衝突時は上書きせず失敗する。
 
-以降、`sessions/<id>/data/` を **agent work dir**、`sessions/<id>/home/agent/` を **agent home** と呼ぶ。実ディレクトリ名は短く保ち、役割名で意味を補う。
+以降、`sessions/<id>/work/` を **agent work dir**、`sessions/<id>/home/agent/` を **agent home** と呼ぶ。実ディレクトリ名は短く保ち、役割名で意味を補う。
 
 ## セッション作成
 
 `rehearse create` は `$REHEARSE_ROOT/profiles/<profile>.json` を読み込み、raw profile を `meta.json` に転記する。`-p` 未指定時は `default` profile を使い、`profiles/default.json` がなければ `{}` で自動作成する。
 
-session id は `-s` 指定時はその値を使い、未指定時は UNIX 秒ベースで自動採番する。session directory には agent work dir (`data/`) と agent home (`home/agent/`) を作る。`data/` には `refs/{a,b}` symlink、`inbox/`、`outbox/` を構築し、agent home には profile の `skeleton` で指定された `$REHEARSE_ROOT/skeletons/<name>/` をコピーする。
+session id は `-s` 指定時はその値を使い、未指定時は UNIX 秒ベースで自動採番する。session directory には agent work dir (`work/`) と agent home (`home/agent/`) を作る。`work/` には `refs/{a,b}` symlink、`inbox/`、`outbox/` を構築し、agent home には profile の `skeleton` で指定された `$REHEARSE_ROOT/skeletons/<name>/` をコピーする。
 
-最後に `meta.json` を書き出し、レビュー用に `data/` の初期状態を git snapshot として保存する。snapshot の扱いは [review.md](review.md) を参照。
+最後に `meta.json` を書き出し、レビュー用に `work/` の初期状態を git snapshot として保存する。snapshot の扱いは [review.md](review.md) を参照。
 
 ## 状態遷移
 
@@ -84,7 +84,7 @@ runner 終了後、harness は exit code と `outbox/.done` の有無から `met
 
 `done` または `failed` の session に対して `run` を呼ぶと、entrypoint が会話履歴の存在を検出して agent CLI の再開モードを使う。Codex CLI は `codex exec resume --last`、Claude Code は `--continue` を使う。harness 側に「再開」という概念はなく、初回か再開かの判定は entrypoint に閉じている。
 
-`run -m "text"` は、その実行に限った追加指示として agent に渡す。初回でも再実行でも使える。省略時は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` が使われる。恒久的な作業指示は agent work dir の `data/AGENTS.md` に置かれ、agent-native な discovery に任せる。
+`run -m "text"` は、その実行に限った追加指示として agent に渡す。初回でも再実行でも使える。省略時は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` が使われる。恒久的な作業指示は agent work dir の `work/AGENTS.md` に置かれ、agent-native な discovery に任せる。
 
 `--rm` を付けるので container は毎回使い捨て。会話履歴や認証情報は agent home (`home/agent/` = container の `/home/agent`) に永続化される。`home/agent/.rehearse/agent/init.sh` があれば、entrypoint は agent CLI 起動前にこれを source する。runner の env 契約は [isolation.md](isolation.md) を参照。
 

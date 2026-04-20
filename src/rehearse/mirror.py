@@ -1,4 +1,4 @@
-"""Build the session `data/` tree: refs/{a,b} symlinks + inbox/ and outbox/ mirrors."""
+"""Build the session `work/` tree: refs/{a,b} symlinks + inbox/ and outbox/ mirrors."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def _mirror(
 def build_work_dir(
     work_dir: Path, a: Path, b: Path
 ) -> None:
-    """Construct `data/` contents: refs/{a,b} symlinks + inbox/ + outbox/ mirrors.
+    """Construct `work/` contents: refs/{a,b} symlinks + inbox/ + outbox/ mirrors.
 
     Assumes `work_dir` already exists and is empty.
     """

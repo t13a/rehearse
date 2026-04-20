@@ -21,8 +21,8 @@ def test_claude_entrypoint_runs_with_custom_message(
         "printf '%s\\n' \"$@\" > \"$CLAUDE_ARGV_DUMP\"\n",
     )
 
-    data = tmp_path / "data"
-    data.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
     home_root = tmp_path / "home"
     env = os.environ.copy()
     env.update(
@@ -31,7 +31,7 @@ def test_claude_entrypoint_runs_with_custom_message(
             "CLAUDE_ARGV_DUMP": str(argv_dump),
             "ANTHROPIC_API_KEY": "sk-ant-test",
             "HOME": str(home_root),
-            "REHEARSE_AGENT_WORK_DIR": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
             "REHEARSE_AGENT_TIMEOUT": "5",
             "REHEARSE_AGENT_MESSAGE": "sort files",
         }
@@ -67,8 +67,8 @@ def test_claude_entrypoint_continues_with_resume_message(
         "printf '%s\\n' \"$@\" > \"$CLAUDE_ARGV_DUMP\"\n",
     )
 
-    data = tmp_path / "data"
-    data.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
     home_root = tmp_path / "home"
     project_dir = home_root / ".claude" / "projects" / "session"
     project_dir.mkdir(parents=True)
@@ -80,7 +80,7 @@ def test_claude_entrypoint_continues_with_resume_message(
             "CLAUDE_ARGV_DUMP": str(argv_dump),
             "ANTHROPIC_API_KEY": "sk-ant-test",
             "HOME": str(home_root),
-            "REHEARSE_AGENT_WORK_DIR": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
             "REHEARSE_AGENT_TIMEOUT": "5",
         }
     )
@@ -115,8 +115,8 @@ def test_claude_entrypoint_sources_agent_init_before_key_check(
         "printf 'ANTHROPIC_API_KEY=%s\\n' \"$ANTHROPIC_API_KEY\" > \"$CLAUDE_ENV_DUMP\"\n",
     )
 
-    data = tmp_path / "data"
-    data.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
     home_root = tmp_path / "home"
     init_dir = home_root / ".rehearse" / "agent"
     init_dir.mkdir(parents=True)
@@ -129,7 +129,7 @@ def test_claude_entrypoint_sources_agent_init_before_key_check(
             "PATH": f"{bin_dir}:{env['PATH']}",
             "CLAUDE_ENV_DUMP": str(env_dump),
             "HOME": str(home_root),
-            "REHEARSE_AGENT_WORK_DIR": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
             "REHEARSE_AGENT_TIMEOUT": "5",
         }
     )

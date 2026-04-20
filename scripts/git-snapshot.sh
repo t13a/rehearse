@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Initialize a git repo at the session directory and take the initial snapshot.
-# Only the data/ tree is tracked; everything else is ignored.
+# Only the work/ tree is tracked; everything else is ignored.
 
 if [ $# -ne 1 ]; then
     echo "usage: $0 <session_dir>" >&2
@@ -14,7 +14,7 @@ git init -q
 cat > .gitignore <<'EOF'
 /*
 !/.gitignore
-!/data
+!/work
 EOF
 git add -A
 git -c user.email=rehearse@localhost -c user.name=rehearse \

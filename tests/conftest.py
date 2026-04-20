@@ -58,7 +58,7 @@ def rehearse_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     )
     yield root
 
-    # Teardown: any session may contain agent-owned files under data/inbox/.
+    # Teardown: any session may contain agent-owned files under work/inbox/.
     # The harness UID cannot unlink them, so if the dir still exists we
     # need docker (running as root) to clean up.
     if root.exists():

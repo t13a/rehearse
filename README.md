@@ -86,7 +86,7 @@ SID=$(uv run rehearse create /tmp/fakeA /tmp/fakeB)
 uv run rehearse status
 uv run rehearse run "$SID"            # Codex CLI 起動。成功すると outbox/.done が生える
 uv run rehearse status "$SID"
-ls ~/.local/share/rehearse/sessions/"$SID"/data/outbox/
+ls ~/.local/share/rehearse/sessions/"$SID"/work/outbox/
 (cd ~/.local/share/rehearse/sessions/"$SID" && git status)
 uv run rehearse commit "$SID"         # outbox/ の配置に従って A→B にファイル移動
 uv run rehearse purge "$SID"

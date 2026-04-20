@@ -49,10 +49,10 @@ def commit_session_with_lock(session_dir: Path, a: Path, b: Path) -> CommitStats
 
 
 def commit_session(session_dir: Path, a: Path, b: Path) -> CommitStats:
-    data = session_dir / "data"
-    outbox = data / "outbox"
-    a_prefix = str(data / "refs" / "a") + "/"
-    b_prefix = str(data / "refs" / "b") + "/"
+    work = session_dir / "work"
+    outbox = work / "outbox"
+    a_prefix = str(work / "refs" / "a") + "/"
+    b_prefix = str(work / "refs" / "b") + "/"
 
     stats = CommitStats()
     log_path = session_dir / "commit.log"
@@ -66,7 +66,7 @@ def commit_session(session_dir: Path, a: Path, b: Path) -> CommitStats:
                     continue
                 _handle_symlink(entry, outbox, a, b, a_prefix, b_prefix, stats, fh)
 
-        inbox = data / "inbox"
+        inbox = work / "inbox"
         for dirpath, _dn, fnames in os.walk(inbox, followlinks=False):
             for name in fnames:
                 entry = Path(dirpath) / name

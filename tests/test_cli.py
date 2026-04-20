@@ -52,7 +52,7 @@ def test_full_lifecycle(
     assert cli.main(["run", session_id]) == 0
     meta = read_meta(session_dir)
     assert meta.status == SessionStatus.done
-    assert (session_dir / "data" / "outbox" / ".done").exists()
+    assert (session_dir / "work" / "outbox" / ".done").exists()
 
     assert cli.main(["status", session_id]) == 0
     detail = capsys.readouterr().out
@@ -161,7 +161,7 @@ def test_run_with_message(
     session_dir = config.SESSIONS_DIR / session_id
 
     assert cli.main(["run", session_id, "-m", "テスト指示"]) == 0
-    assert (session_dir / "data" / "outbox" / "FYI.md").read_text() == "テスト指示\n"
+    assert (session_dir / "work" / "outbox" / "FYI.md").read_text() == "テスト指示\n"
 
 
 def test_debug_requires_command(capsys: pytest.CaptureFixture[str]) -> None:
@@ -191,7 +191,7 @@ def test_debug_uses_run_status_flow(
         assert session_dir_arg == session_dir
         assert run_lock_path == session.run_lock_path(session_dir)
         assert argv == ["/bin/bash", "-lc", "touch outbox/.done"]
-        (session_dir_arg / "data" / "outbox" / ".done").touch()
+        (session_dir_arg / "work" / "outbox" / ".done").touch()
         return 0
 
     monkeypatch.setattr(run, "run_debug", fake_debug)
@@ -270,6 +270,6 @@ def test_exec_runs_in_work_dir(
     session_id = session.create_session(str(a), str(b))
     session_dir = config.SESSIONS_DIR / session_id
 
-    out = session_dir / "data" / "outbox" / "cwd.txt"
+    out = session_dir / "work" / "outbox" / "cwd.txt"
     assert cli.main(["exec", session_id, "sh", "-c", f"pwd > {out}"]) == 0
-    assert out.read_text().strip() == str(session_dir / "data")
+    assert out.read_text().strip() == str(session_dir / "work")

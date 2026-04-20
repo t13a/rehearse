@@ -12,7 +12,7 @@
 
 ## なぜ session directory 起点の absolute path で比較するか
 
-symlink の target は `session directory/data/refs/a/...` または `session directory/data/refs/b/...` の 2 系統しかないという不変条件を立てている (inbox/outbox 構築時にそう作る)。
+symlink の target は `session directory/work/refs/a/...` または `session directory/work/refs/b/...` の 2 系統しかないという不変条件を立てている (inbox/outbox 構築時にそう作る)。
 
 target 文字列の prefix で分岐するので:
 
@@ -81,7 +81,7 @@ abort 時は最後のエントリが原因。 resume や手動リカバリの際
 - `inbox/` の symlink は dead (target の実ファイルが B に移動したので壊れている)
 - `outbox/` の symlink は B 由来のものは live、 A 由来のものは dead
 - ただし symlink **自体** (文字列) と `.FYI.md` は残る
-- `readlink inbox/foo.flac` → `$HOME/.local/share/rehearse/sessions/<id>/data/refs/a/foo.flac` (文字列としては読める)
+- `readlink inbox/foo.flac` → `$HOME/.local/share/rehearse/sessions/<id>/work/refs/a/foo.flac` (文字列としては読める)
 - 「元は A のどこにあって、 agent が B のどこに置こうとしたか」の記録が完全に残る
 - 後日の振り返り、ルール改善、学習データとして使える
 

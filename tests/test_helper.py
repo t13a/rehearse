@@ -43,7 +43,7 @@ def test_chown_paths_invokes_docker_helper(
 
     effective = effective_profile({"helper_image": "busybox:test"})
     session_dir = tmp_path / "sessions" / "123"
-    inbox = session_dir / "data" / "inbox"
+    inbox = session_dir / "work" / "inbox"
     home = session_dir / "home" / "agent"
 
     helper.chown_paths(

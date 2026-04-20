@@ -11,11 +11,11 @@
 
 symlink の target はただの文字列で、 解決時に絶対パスとして評価される。ホストとコンテナでパスが食い違うと、片側から symlink が壊れて見える。したがってコンテナ内のマウント先はホストのパスをそのまま使う。
 
-マウントするのは **agent work dir (`data/`) のみ**。 session directory ルート直下の `.git/` や `meta.json` は container から見えないので、 agent が git の存在を観測することも、 harness のメタに触れることもできない。
+マウントするのは **agent work dir (`work/`) のみ**。 session directory ルート直下の `.git/` や `meta.json` は container から見えないので、 agent が git の存在を観測することも、 harness のメタに触れることもできない。
 
 ```bash
 docker run --rm \
-  -v $HOME/.local/share/rehearse/sessions/<id>/data:$HOME/.local/share/rehearse/sessions/<id>/data:rw \
+  -v $HOME/.local/share/rehearse/sessions/<id>/work:$HOME/.local/share/rehearse/sessions/<id>/work:rw \
   -v /host/path/A:/host/path/A:ro \
   -v /host/path/B:/host/path/B:ro \
   --network=... \
@@ -27,7 +27,7 @@ docker run --rm \
 
 ```
 $HOME/.local/share/rehearse/sessions/<id>/
-└── data/                    (sessions/<id>/data のみがマウントされる)
+└── work/                    (sessions/<id>/work のみがマウントされる)
     ├── refs/
     │   ├── a -> /host/path/A    (ro マウント経由で読める)
     │   └── b -> /host/path/B    (ro マウント経由で読める)
@@ -49,7 +49,7 @@ Codex CLI や Claude Code は agent home 配下に認証情報、設定、会話
 
 コピーは symlink を symlink のまま保つ。 skeleton は雛形で、 agent home は独立したコピーなので、 agent が `.codex/auth.json` などを更新しても skeleton 側には書き戻さない。 session directory は `purge` まで残るため copied secret も残る。 `purge` で session directory を消すと agent home も一緒に消える。短期セッションでは履歴を後から振り返れるし、長期では `purge` 一発で掃除できる。
 
-セッション開始時の git snapshot は `data/` だけを追跡するので、 `home/agent/.codex/auth.json` のような agent home 配下のファイルは session git repo に入らない。
+セッション開始時の git snapshot は `work/` だけを追跡するので、 `home/agent/.codex/auth.json` のような agent home 配下のファイルは session git repo に入らない。
 
 ## Docker 環境変数設計
 
@@ -58,7 +58,7 @@ harness は以下の環境変数を runner にエクスポートする:
 | 変数 | 意味 |
 |---|---|
 | `REHEARSE_SESSION_DIR` | session directory (host path) |
-| `REHEARSE_AGENT_WORK_DIR` | agent work dir (`data/`) の host path |
+| `REHEARSE_AGENT_WORK_DIR` | agent work dir (`work/`) の host path |
 | `REHEARSE_AGENT_HOME` | agent home (`home/agent/`) の host path (= container 内 `/home/agent` の bind 元) |
 | `REHEARSE_SESSION_RUN_LOCK` | run 中だけ runner が `flock` で保持する session lock |
 | `REHEARSE_SESSION_A` | A の host path (RO mount に使う) |

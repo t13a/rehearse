@@ -87,16 +87,16 @@ def load_raw_profile(name: str) -> dict[str, Any]:
     if not path.exists():
         raise ProfileError(f"profile not found: {name}")
     try:
-        data = json.loads(path.read_text())
+        work = json.loads(path.read_text())
     except json.JSONDecodeError as e:
         raise ProfileError(f"invalid profile JSON in {path}: {e}") from e
-    if not isinstance(data, dict):
+    if not isinstance(work, dict):
         raise ProfileError(f"profile must be a JSON object: {path}")
     try:
-        RawProfile.model_validate(data)
+        RawProfile.model_validate(work)
     except ValidationError as e:
         raise ProfileError(f"invalid profile {name}: {e}") from e
-    return data
+    return work
 
 
 def load_profile_for_create(name: str) -> dict[str, Any]:

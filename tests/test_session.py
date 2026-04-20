@@ -24,41 +24,41 @@ def test_create_session_with_no_options(
     session_id = session.create_session(str(a), str(b))
 
     session_dir = config.SESSIONS_DIR / session_id
-    data = session_dir / "data"
+    work = session_dir / "work"
 
-    assert (data / "refs" / "a").is_symlink()
-    assert (data / "refs" / "b").is_symlink()
-    assert (data / "refs" / "a").resolve() == a.resolve()
-    assert (data / "refs" / "b").resolve() == b.resolve()
+    assert (work / "refs" / "a").is_symlink()
+    assert (work / "refs" / "b").is_symlink()
+    assert (work / "refs" / "a").resolve() == a.resolve()
+    assert (work / "refs" / "b").resolve() == b.resolve()
 
-    assert (data / "inbox" / "file1.txt").is_symlink()
-    assert (data / "inbox" / "sub" / "file2.txt").is_symlink()
-    assert (data / "outbox" / "existing" / "old.txt").is_symlink()
+    assert (work / "inbox" / "file1.txt").is_symlink()
+    assert (work / "inbox" / "sub" / "file2.txt").is_symlink()
+    assert (work / "outbox" / "existing" / "old.txt").is_symlink()
 
-    assert (data / "AGENTS.md").is_file()
-    assert (data / "AGENTS.md").read_text() == config.DEFAULT_AGENT_INSTRUCTIONS.read_text()
-    assert (data / "CLAUDE.md").is_symlink()
-    assert os.readlink(data / "CLAUDE.md") == "AGENTS.md"
+    assert (work / "AGENTS.md").is_file()
+    assert (work / "AGENTS.md").read_text() == config.DEFAULT_AGENT_INSTRUCTIONS.read_text()
+    assert (work / "CLAUDE.md").is_symlink()
+    assert os.readlink(work / "CLAUDE.md") == "AGENTS.md"
 
-    inbox_link = data / "inbox" / "file1.txt"
+    inbox_link = work / "inbox" / "file1.txt"
     target = os.readlink(inbox_link)
-    assert target == str(data / "refs" / "a" / "file1.txt")
+    assert target == str(work / "refs" / "a" / "file1.txt")
 
-    d_mode = stat.S_IMODE(os.stat(data / "outbox").st_mode)
+    d_mode = stat.S_IMODE(os.stat(work / "outbox").st_mode)
     assert d_mode == 0o1777
-    sub_mode = stat.S_IMODE(os.stat(data / "outbox" / "existing").st_mode)
+    sub_mode = stat.S_IMODE(os.stat(work / "outbox" / "existing").st_mode)
     assert sub_mode == 0o1777
 
-    data_stat = os.lstat(data)
-    assert data_stat.st_uid == config.DEFAULT_GUARD_UID
-    assert data_stat.st_gid == config.DEFAULT_GUARD_GID
-    outbox_link_stat = os.lstat(data / "outbox" / "existing" / "old.txt")
+    work_stat = os.lstat(work)
+    assert work_stat.st_uid == config.DEFAULT_GUARD_UID
+    assert work_stat.st_gid == config.DEFAULT_GUARD_GID
+    outbox_link_stat = os.lstat(work / "outbox" / "existing" / "old.txt")
     assert outbox_link_stat.st_uid == config.DEFAULT_GUARD_UID
     assert outbox_link_stat.st_gid == config.DEFAULT_GUARD_GID
-    agents_stat = os.lstat(data / "AGENTS.md")
+    agents_stat = os.lstat(work / "AGENTS.md")
     assert agents_stat.st_uid == config.DEFAULT_GUARD_UID
     assert agents_stat.st_gid == config.DEFAULT_GUARD_GID
-    claude_stat = os.lstat(data / "CLAUDE.md")
+    claude_stat = os.lstat(work / "CLAUDE.md")
     assert claude_stat.st_uid == config.DEFAULT_GUARD_UID
     assert claude_stat.st_gid == config.DEFAULT_GUARD_GID
 
@@ -81,8 +81,8 @@ def test_create_session_with_no_options(
         capture_output=True,
         text=True,
     ).stdout.splitlines()
-    assert "data/AGENTS.md" in tracked
-    assert "data/CLAUDE.md" in tracked
+    assert "work/AGENTS.md" in tracked
+    assert "work/CLAUDE.md" in tracked
 
 
 @pytest.mark.docker
@@ -164,22 +164,22 @@ def test_create_session_guards_b_mirror_from_agent(
 
     a, b = fake_ab
     session_id = session.create_session(str(a), str(b))
-    data = config.SESSIONS_DIR / session_id / "data"
+    work = config.SESSIONS_DIR / session_id / "work"
 
     result = subprocess.run(
         [
             "docker", "run", "--rm",
             "--user", f"{config.DEFAULT_AGENT_UID}:{config.DEFAULT_AGENT_GID}",
-            "-v", f"{data}:{data}:rw",
+            "-v", f"{work}:{work}:rw",
             "busybox:latest",
             "mv",
-            str(data / "outbox" / "existing" / "old.txt"),
-            str(data / "outbox" / "existing" / "renamed.txt"),
+            str(work / "outbox" / "existing" / "old.txt"),
+            str(work / "outbox" / "existing" / "renamed.txt"),
         ],
         capture_output=True,
         text=True,
     )
 
     assert result.returncode != 0
-    assert (data / "outbox" / "existing" / "old.txt").is_symlink()
-    assert not (data / "outbox" / "existing" / "renamed.txt").exists()
+    assert (work / "outbox" / "existing" / "old.txt").is_symlink()
+    assert not (work / "outbox" / "existing" / "renamed.txt").exists()

@@ -29,7 +29,7 @@ def test_assembles_args_for_run(
             "PATH": f"{bin_dir}:{env['PATH']}",
             "DOCKER_ARGV_DUMP": str(argv_dump),
             "REHEARSE_SESSION_DIR": str(tmp_path / "ws"),
-            "REHEARSE_AGENT_WORK_DIR": str(tmp_path / "ws" / "data"),
+            "REHEARSE_AGENT_WORK_DIR": str(tmp_path / "ws" / "work"),
             "REHEARSE_AGENT_HOME": str(tmp_path / "ws" / "home" / "agent"),
             "REHEARSE_SESSION_RUN_LOCK": str(tmp_path / "ws" / "run.lock"),
             "REHEARSE_SESSION_A": str(tmp_path / "A"),
@@ -56,7 +56,7 @@ def test_assembles_args_for_run(
     assert argv[:2] == ["run", "--rm"]
     assert "-e" in argv
     assert "HOME=/home/agent" in argv
-    assert f"REHEARSE_AGENT_WORK_DIR={tmp_path / 'ws' / 'data'}" in argv
+    assert f"REHEARSE_AGENT_WORK_DIR={tmp_path / 'ws' / 'work'}" in argv
     assert "REHEARSE_AGENT_MESSAGE=go" in argv
     assert "REHEARSE_AGENT_EXTRA_ARGS=--oss" in argv
     assert argv[-1] == "rehearse-agent-codex:latest"
@@ -81,7 +81,7 @@ def test_assembles_args_for_debug(
             "PATH": f"{bin_dir}:{env['PATH']}",
             "DOCKER_ARGV_DUMP": str(argv_dump),
             "REHEARSE_SESSION_DIR": str(tmp_path / "ws"),
-            "REHEARSE_AGENT_WORK_DIR": str(tmp_path / "ws" / "data"),
+            "REHEARSE_AGENT_WORK_DIR": str(tmp_path / "ws" / "work"),
             "REHEARSE_AGENT_HOME": str(tmp_path / "ws" / "home" / "agent"),
             "REHEARSE_SESSION_RUN_LOCK": str(tmp_path / "ws" / "run.lock"),
             "REHEARSE_SESSION_A": str(tmp_path / "A"),
@@ -132,7 +132,7 @@ def test_fails_when_session_lock_is_held(
             "PATH": f"{bin_dir}:{env['PATH']}",
             "DOCKER_CALLED": str(docker_called),
             "REHEARSE_SESSION_DIR": str(tmp_path / "ws"),
-            "REHEARSE_AGENT_WORK_DIR": str(tmp_path / "ws" / "data"),
+            "REHEARSE_AGENT_WORK_DIR": str(tmp_path / "ws" / "work"),
             "REHEARSE_AGENT_HOME": str(tmp_path / "ws" / "home" / "agent"),
             "REHEARSE_SESSION_RUN_LOCK": str(lock_path),
             "REHEARSE_SESSION_A": str(tmp_path / "A"),

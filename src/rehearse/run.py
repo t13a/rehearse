@@ -63,7 +63,7 @@ def _runner_env(
     """Build the env-var contract shared by run and debug."""
     env = os.environ.copy()
     env["REHEARSE_SESSION_DIR"] = str(session_dir)
-    env["REHEARSE_AGENT_WORK_DIR"] = str(session_dir / "data")
+    env["REHEARSE_AGENT_WORK_DIR"] = str(session_dir / "work")
     env["REHEARSE_AGENT_HOME"] = str(session_dir / "home" / "agent")
     env["REHEARSE_SESSION_RUN_LOCK"] = str(run_lock_path)
     env["REHEARSE_SESSION_A"] = str(a)

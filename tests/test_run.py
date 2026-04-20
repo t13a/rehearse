@@ -74,7 +74,7 @@ def test_run_agent_passes_required_env(
     assert not missing, f"runner did not receive: {missing}"
 
     assert env["REHEARSE_SESSION_DIR"] == str(session_dir)
-    assert env["REHEARSE_AGENT_WORK_DIR"] == str(session_dir / "data")
+    assert env["REHEARSE_AGENT_WORK_DIR"] == str(session_dir / "work")
     assert env["REHEARSE_AGENT_HOME"] == str(session_dir / "home" / "agent")
     assert env["REHEARSE_SESSION_RUN_LOCK"] == str(run_lock_path)
     assert env["REHEARSE_SESSION_A"] == str(a)

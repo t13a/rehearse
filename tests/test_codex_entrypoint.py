@@ -21,8 +21,8 @@ def test_codex_entrypoint_runs_exec_with_prompt_argument(
         "printf '%s\\n' \"$@\" > \"$CODEX_ARGV_DUMP\"\n"
     )
 
-    data = tmp_path / "data"
-    data.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
     home = tmp_path / "home" / ".codex"
     home.mkdir(parents=True)
     env = os.environ.copy()
@@ -32,7 +32,7 @@ def test_codex_entrypoint_runs_exec_with_prompt_argument(
             "CODEX_ARGV_DUMP": str(argv_dump),
             "CODEX_HOME": str(home),
             "HOME": str(tmp_path / "home"),
-            "REHEARSE_AGENT_WORK_DIR": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
             "REHEARSE_AGENT_TIMEOUT": "5",
             "REHEARSE_AGENT_MESSAGE": "sort files",
             "REHEARSE_AGENT_EXTRA_ARGS": "--oss",
@@ -73,8 +73,8 @@ def test_codex_entrypoint_sources_agent_init(
         "cat >/dev/null\n",
     )
 
-    data = tmp_path / "data"
-    data.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
     home_root = tmp_path / "home"
     home = home_root / ".codex"
     init_dir = home_root / ".rehearse" / "agent"
@@ -89,7 +89,7 @@ def test_codex_entrypoint_sources_agent_init(
             "CODEX_ENV_DUMP": str(env_dump),
             "CODEX_HOME": str(home),
             "HOME": str(home_root),
-            "REHEARSE_AGENT_WORK_DIR": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
             "REHEARSE_AGENT_TIMEOUT": "5",
         }
     )
@@ -108,8 +108,8 @@ def test_codex_entrypoint_sources_agent_init(
 def test_codex_entrypoint_fails_when_agent_init_fails(
     tmp_path: Path,
 ) -> None:
-    data = tmp_path / "data"
-    data.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
     home_root = tmp_path / "home"
     init_dir = home_root / ".rehearse" / "agent"
     init_dir.mkdir(parents=True)
@@ -119,7 +119,7 @@ def test_codex_entrypoint_fails_when_agent_init_fails(
     env.update(
         {
             "HOME": str(home_root),
-            "REHEARSE_AGENT_WORK_DIR": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
             "REHEARSE_AGENT_TIMEOUT": "5",
         }
     )
@@ -146,8 +146,8 @@ def test_codex_entrypoint_resumes_existing_session(
         "printf '%s\\n' \"$@\" > \"$CODEX_ARGV_DUMP\"\n"
     )
 
-    data = tmp_path / "data"
-    data.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
     home = tmp_path / "home" / ".codex"
     (home / "sessions").mkdir(parents=True)
     (home / "sessions" / "session.jsonl").write_text("{}\n")
@@ -159,7 +159,7 @@ def test_codex_entrypoint_resumes_existing_session(
             "CODEX_ARGV_DUMP": str(argv_dump),
             "CODEX_HOME": str(home),
             "HOME": str(tmp_path / "home"),
-            "REHEARSE_AGENT_WORK_DIR": str(data),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
             "REHEARSE_AGENT_TIMEOUT": "5",
             "REHEARSE_AGENT_EXTRA_ARGS": "--oss",
         }

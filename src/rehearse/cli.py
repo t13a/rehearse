@@ -57,7 +57,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_commit.add_argument("session_id")
     p_commit.set_defaults(func=_cmd_commit)
 
-    p_exec = sub.add_parser("exec", help="run a command in the session data directory")
+    p_exec = sub.add_parser("exec", help="run a command in the agent work directory")
     p_exec.add_argument("session_id")
     p_exec.add_argument("argv", nargs=argparse.REMAINDER)
     p_exec.set_defaults(func=_cmd_exec)
@@ -223,7 +223,7 @@ def _cmd_exec(args: argparse.Namespace) -> int:
         print("usage: rehearse exec <session> CMD [ARGS...]", file=sys.stderr)
         return 2
     session_dir = session.resolve_session_dir(args.session_id)
-    work_dir = session_dir / "data"
+    work_dir = session_dir / "work"
     return subprocess.run(args.argv, cwd=work_dir).returncode
 
 

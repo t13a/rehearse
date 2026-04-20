@@ -199,7 +199,7 @@ def create_session(
         else allocate_named_session_id(session_id)
     )
     session_dir = session_path(session_id)
-    work_dir = session_dir / "data"
+    work_dir = session_dir / "work"
     work_dir.mkdir(parents=True, exist_ok=True)
 
     mirror.build_work_dir(work_dir, a, b)
@@ -286,7 +286,7 @@ def finish_run(
     meta = read_meta(session_dir)
     meta.started_at = started_at
     meta.ended_at = now()
-    done_flag = session_dir / "data" / "outbox" / ".done"
+    done_flag = session_dir / "work" / "outbox" / ".done"
     if done_flag.exists():
         meta.status = SessionStatus.done
         meta.exit_reason = "normal"
