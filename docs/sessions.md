@@ -84,7 +84,7 @@ runner 終了後、harness は exit code と `outbox/.done` の有無から `met
 
 `done` または `failed` の session に対して `run` を呼ぶと、entrypoint が会話履歴の存在を検出して agent CLI の再開モードを使う。Codex CLI は `codex exec resume --last`、Claude Code は `--continue` を使う。harness 側に「再開」という概念はなく、初回か再開かの判定は entrypoint に閉じている。
 
-`run -m "text"` は、その実行に限った追加指示として agent に渡す。初回でも再実行でも使える。省略時は初回なら `作業を開始してください。`、継続なら `作業を再開してください。` が使われる。恒久的な作業指示は agent work dir の `work/AGENTS.md` に置かれ、agent-native な discovery に任せる。
+`run -m "text"` は、その実行に限った追加指示として agent に渡す。初回でも再実行でも使える。省略時は初回なら `Start working.`、継続なら `Resume working.` が使われる。恒久的な作業指示は agent work dir の `work/AGENTS.md` に置かれ、agent-native な discovery に任せる。
 
 `--rm` を付けるので container は毎回使い捨て。会話履歴や認証情報は agent home (`home/agent/` = container の `/home/agent`) に永続化される。`home/agent/.rehearse/agent/init.sh` があれば、entrypoint は agent CLI 起動前にこれを source する。runner の env 契約は [isolation.md](isolation.md) を参照。
 

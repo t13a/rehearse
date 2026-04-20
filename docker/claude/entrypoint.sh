@@ -20,9 +20,9 @@ args=(
 
 if ls "$HOME/.claude/projects/"*/*.jsonl >/dev/null 2>&1; then
   args+=(--continue)
-  prompt="${REHEARSE_AGENT_MESSAGE:-作業を再開してください。}"
+  prompt="${REHEARSE_AGENT_MESSAGE:-Resume working.}"
 else
-  prompt="${REHEARSE_AGENT_MESSAGE:-作業を開始してください。}"
+  prompt="${REHEARSE_AGENT_MESSAGE:-Start working.}"
 fi
 
 if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then

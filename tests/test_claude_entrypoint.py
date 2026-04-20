@@ -99,8 +99,47 @@ def test_claude_entrypoint_continues_with_resume_message(
         "--permission-mode",
         "bypassPermissions",
         "--continue",
-        "作業を再開してください。",
+        "Resume working.",
     ]
+
+
+def test_claude_entrypoint_uses_default_start_message(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    argv_dump = tmp_path / "claude.argv"
+    write_executable(
+        bin_dir / "claude",
+        "#!/bin/bash\n"
+        "printf '%s\\n' \"$@\" > \"$CLAUDE_ARGV_DUMP\"\n",
+    )
+
+    work = tmp_path / "work"
+    work.mkdir()
+    home_root = tmp_path / "home"
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "CLAUDE_ARGV_DUMP": str(argv_dump),
+            "ANTHROPIC_API_KEY": "sk-ant-test",
+            "HOME": str(home_root),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
+            "REHEARSE_AGENT_TIMEOUT": "5",
+        }
+    )
+
+    result = subprocess.run(
+        [str(REPO_ROOT / "docker" / "claude" / "entrypoint.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    argv = argv_dump.read_text().splitlines()
+    assert argv[-1] == "Start working."
 
 
 def test_claude_entrypoint_sources_agent_init_before_key_check(

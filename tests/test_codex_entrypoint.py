@@ -102,6 +102,46 @@ def test_codex_entrypoint_sources_agent_init(
     assert env_dump.read_text() == "OPENROUTER_API_KEY=sk-openrouter\n"
 
 
+def test_codex_entrypoint_uses_default_start_message(
+    tmp_path: Path,
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    argv_dump = tmp_path / "codex.argv"
+    write_executable(
+        bin_dir / "codex",
+        "#!/bin/bash\n"
+        "printf '%s\\n' \"$@\" > \"$CODEX_ARGV_DUMP\"\n"
+    )
+
+    work = tmp_path / "work"
+    work.mkdir()
+    home = tmp_path / "home" / ".codex"
+    home.mkdir(parents=True)
+    env = os.environ.copy()
+    env.update(
+        {
+            "PATH": f"{bin_dir}:{env['PATH']}",
+            "CODEX_ARGV_DUMP": str(argv_dump),
+            "CODEX_HOME": str(home),
+            "HOME": str(tmp_path / "home"),
+            "REHEARSE_AGENT_WORK_DIR": str(work),
+            "REHEARSE_AGENT_TIMEOUT": "5",
+        }
+    )
+
+    result = subprocess.run(
+        [str(REPO_ROOT / "docker" / "codex" / "entrypoint.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    argv = argv_dump.read_text().splitlines()
+    assert argv[-1] == "Start working."
+
+
 def test_codex_entrypoint_fails_when_agent_init_fails(
     tmp_path: Path,
 ) -> None:
@@ -178,5 +218,5 @@ def test_codex_entrypoint_resumes_existing_session(
         "resume",
         "--last",
         "--skip-git-repo-check",
-        "作業を再開してください。",
+        "Resume working.",
     ]
