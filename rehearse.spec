@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from PyInstaller.utils.hooks import copy_metadata
+
 
 project_root = Path(SPECPATH)
 datas = [
@@ -9,6 +11,7 @@ datas = [
     (str(project_root / "scripts"), "scripts"),
     (str(project_root / "docker"), "docker"),
 ]
+datas += copy_metadata("rehearse")
 
 a = Analysis(
     ["src/rehearse/__main__.py"],

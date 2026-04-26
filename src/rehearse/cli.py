@@ -8,6 +8,7 @@ import sys
 from typing import Sequence
 
 from rehearse import (
+    __version__,
     commit,
     helper,
     instruction,
@@ -25,6 +26,9 @@ def _build_parser() -> argparse.ArgumentParser:
         description="symlink-staging harness for AI-driven large-file organization",
     )
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p_version = sub.add_parser("version", help="show the rehearse version")
+    p_version.set_defaults(func=_cmd_version)
 
     p_build_image = sub.add_parser("build-image", help="build an agent image")
     p_build_image.add_argument("agent", choices=("codex", "claude"))
@@ -69,6 +73,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_exec.set_defaults(func=_cmd_exec)
 
     return parser
+
+
+def _cmd_version(args: argparse.Namespace) -> int:
+    print(f"rehearse {__version__}")
+    return 0
 
 
 def _cmd_build_image(args: argparse.Namespace) -> int:
