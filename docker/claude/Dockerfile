@@ -7,7 +7,7 @@ FROM node:20-slim
 # images are intended for local use only. Do not redistribute them unless
 # Anthropic's license terms allow it.
 RUN apt-get update \
- && apt-get install --no-install-recommends -y ca-certificates curl findutils tree \
+ && apt-get install --no-install-recommends -y ca-certificates curl findutils python3 tree \
  && rm -rf /var/lib/apt/lists/* \
  && curl -fsSL https://claude.ai/install.sh | bash \
  && mkdir -p /usr/local/share/claude \

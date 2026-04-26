@@ -7,7 +7,9 @@ FROM node:20-slim
 RUN apt-get update \
  && apt-get install --no-install-recommends -y \
       ca-certificates \
+      curl \
       findutils \
+      python3 \
       tree \
  && rm -rf /var/lib/apt/lists/* \
  && npm install -g @openai/codex
