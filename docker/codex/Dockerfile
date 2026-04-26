@@ -14,8 +14,8 @@ RUN apt-get update \
 
 RUN mkdir -p /home/agent/.codex
 
-COPY docker/codex/entrypoint.sh /opt/rehearse/entrypoint.sh
-RUN chmod +x /opt/rehearse/entrypoint.sh
+COPY docker/codex/entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh
 
 # Strip the forbidden tools last so the deletion of `rm` itself happens in a
 # single invocation (the binary is gone after this RUN finishes).
@@ -31,4 +31,4 @@ RUN /usr/bin/rm -f \
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 
-ENTRYPOINT ["/opt/rehearse/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]

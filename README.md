@@ -106,7 +106,7 @@ To enter the Docker container, inspect the agent work directory, or run the agen
 ```bash
 uv run rehearse debug "$SID" bash
 uv run rehearse debug "$SID" codex --help
-uv run rehearse debug "$SID" /opt/rehearse/entrypoint.sh
+uv run rehearse debug "$SID" /entrypoint.sh
 ```
 
 ## Cleanup
