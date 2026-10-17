@@ -37,8 +37,7 @@ def test_create_session_with_no_options(
 
     assert (work / "AGENTS.md").is_file()
     assert (work / "AGENTS.md").read_text() == config.DEFAULT_AGENT_INSTRUCTIONS.read_text()
-    assert (work / "CLAUDE.md").is_symlink()
-    assert os.readlink(work / "CLAUDE.md") == "AGENTS.md"
+    assert not os.path.lexists(work / "CLAUDE.md")
 
     inbox_link = work / "inbox" / "file1.txt"
     target = os.readlink(inbox_link)
@@ -58,9 +57,6 @@ def test_create_session_with_no_options(
     agents_stat = os.lstat(work / "AGENTS.md")
     assert agents_stat.st_uid == config.DEFAULT_GUARD_UID
     assert agents_stat.st_gid == config.DEFAULT_GUARD_GID
-    claude_stat = os.lstat(work / "CLAUDE.md")
-    assert claude_stat.st_uid == config.DEFAULT_GUARD_UID
-    assert claude_stat.st_gid == config.DEFAULT_GUARD_GID
 
     c_stat = os.lstat(inbox_link)
     assert c_stat.st_uid == config.DEFAULT_AGENT_UID
@@ -82,7 +78,6 @@ def test_create_session_with_no_options(
         text=True,
     ).stdout.splitlines()
     assert "work/AGENTS.md" in tracked
-    assert "work/CLAUDE.md" in tracked
 
 
 @pytest.mark.docker
