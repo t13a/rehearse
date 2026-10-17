@@ -144,6 +144,8 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
     )
     if agent_uid == guard_uid:
         raise ProfileError("agent_uid and guard_uid must be different")
+    if agent_gid == guard_gid:
+        raise ProfileError("agent_gid and guard_gid must be different")
 
     return EffectiveProfile(
         agent=agent,

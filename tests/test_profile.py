@@ -88,14 +88,14 @@ def test_uid_gid_overrides(
             "agent_uid": 20000,
             "agent_gid": 30000,
             "guard_uid": 20001,
-            "guard_gid": 30000,
+            "guard_gid": 30001,
         }
     )
 
     assert effective.agent_uid == 20000
     assert effective.agent_gid == 30000
     assert effective.guard_uid == 20001
-    assert effective.guard_gid == 30000
+    assert effective.guard_gid == 30001
 
 
 def test_agent_uid_must_not_match_guard_uid(
@@ -103,6 +103,11 @@ def test_agent_uid_must_not_match_guard_uid(
 ) -> None:
     with pytest.raises(profile.ProfileError, match="agent_uid and guard_uid"):
         profile.effective_profile({"agent_uid": 20000, "guard_uid": 20000})
+
+
+def test_agent_gid_must_not_match_guard_gid() -> None:
+    with pytest.raises(profile.ProfileError, match="agent_gid and guard_gid"):
+        profile.effective_profile({"agent_gid": 20000, "guard_gid": 20000})
 
 
 def test_claude_agent_selects_claude_defaults(
