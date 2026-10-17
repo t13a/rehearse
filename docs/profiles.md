@@ -78,7 +78,7 @@ agent ごとの小さなヘルパーや provider 固有の環境変数は image 
 
 ## Agent instructions
 
-agent への恒久的な作業指示は、session 作成時に agent work dir の `work/AGENTS.md` としてコピーされる。Claude Code 互換のため、同じ場所に `CLAUDE.md -> AGENTS.md` の相対 symlink も作る。Codex / Claude Code には instructions の内容を prompt として渡さず、各 agent の native な discovery に任せる。
+agent への恒久的な作業指示は、session 作成時に agent work dir の `work/AGENTS.md` としてコピーされる。Codex / Claude Code には instructions の内容を prompt として渡さず、各 agent の native な discovery に任せる。
 
 既定では bundled `instructions/default.md` を使う。用途ごとに差し替える場合は `$REHEARSE_ROOT` 配下に instructions file を置き、profile の `agent_instructions` で指定する:
 
