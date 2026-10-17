@@ -104,8 +104,14 @@ def _handle_symlink(
         _log(fh, op="unexpected-target", target=target)
         raise CommitAbort(f"unexpected symlink target: {target}")
 
+    # The prefix check is only a string match, so `..` or symlinks in the
+    # suffix could still point outside A. Resolve the path and require it to
+    # stay inside A.
     suffix = target[len(a_prefix):]
-    src = a / suffix
+    src = Path(os.path.realpath(a / suffix))
+    if not src.is_relative_to(os.path.realpath(a)):
+        _log(fh, op="outside-a", target=target, src=str(src))
+        raise CommitAbort(f"symlink target resolves outside A: {target}")
 
     if src.exists() and not dst.exists():
         dst.parent.mkdir(parents=True, exist_ok=True)
