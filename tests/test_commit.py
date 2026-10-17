@@ -156,3 +156,38 @@ def test_commit_creates_nested_b_dirs(
     assert stats.moved == 1
     assert (b / "x" / "y" / "z" / "file1.txt").exists()
     assert (b / "x" / "y" / "z" / "file1.txt").read_text() == "hello\n"
+
+
+@pytest.mark.parametrize("suffix", ["../victim.txt", "sub/../../victim.txt"])
+def test_commit_aborts_on_target_outside_a(
+    tmp_path: Path, fake_ab: tuple[Path, Path], suffix: str
+) -> None:
+    a, b = fake_ab
+    victim = tmp_path / "victim.txt"
+    victim.write_text("secret\n")
+    session_dir = _build_session_dir(tmp_path, a, b)
+    a_prefix = str(session_dir / "work" / "refs" / "a") + "/"
+    (session_dir / "work" / "outbox" / "stolen").symlink_to(a_prefix + suffix)
+
+    with pytest.raises(commit.CommitAbort, match="outside A"):
+        commit.commit_session(session_dir, a, b)
+
+    assert victim.read_text() == "secret\n"
+    assert not (b / "stolen").exists()
+    assert "outside-a" in _read_log_ops(session_dir)
+
+
+@pytest.mark.parametrize("suffix", ["sub", ""])
+def test_commit_ignores_symlinks_to_directories(
+    tmp_path: Path, fake_ab: tuple[Path, Path], suffix: str
+) -> None:
+    a, b = fake_ab
+    session_dir = _build_session_dir(tmp_path, a, b)
+    a_prefix = str(session_dir / "work" / "refs" / "a") + "/"
+    (session_dir / "work" / "outbox" / "whole-dir").symlink_to(a_prefix + suffix)
+
+    stats = commit.commit_session(session_dir, a, b)
+
+    assert stats.moved == 0
+    assert (a / "sub" / "file2.txt").exists()
+    assert not (b / "whole-dir").exists()
