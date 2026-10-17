@@ -33,6 +33,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_build_image = sub.add_parser("build-image", help="build an agent image")
     p_build_image.add_argument("agent", choices=("codex", "claude"))
     p_build_image.add_argument("tag", nargs="?", default=None)
+    p_build_image.add_argument("--no-cache", action="store_true",
+                               help="rebuild without the Docker layer cache to get the current agent CLI")
     p_build_image.set_defaults(func=_cmd_build_image)
 
     p_create = sub.add_parser("create", help="create a new session")
@@ -83,6 +85,8 @@ def _cmd_version(args: argparse.Namespace) -> int:
 def _cmd_build_image(args: argparse.Namespace) -> int:
     script = resource.path("scripts", f"build-agent-{args.agent}-image.sh")
     command = ["bash", str(script)]
+    if args.no_cache:
+        command.append("--no-cache")
     if args.tag is not None:
         command.append(args.tag)
     return subprocess.run(command).returncode
