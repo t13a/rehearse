@@ -1,81 +1,56 @@
 # rehearse
 
-A harness for delegating complex file organization to AI agents. rehearse uses symlinks as a staging layer, protects the file layout with sticky-bit permissions, and isolates the agent workspace with Docker. During human review, you can inspect the agent's result, which is a move plan, with Git or any other tool you like. You can also make manual adjustments or send follow-up instructions to the agent. Once the plan is approved, rehearse moves all files in one commit step.
+A harness for letting an AI agent organize large files without risking them.
+
+The agent never touches your real files. It rearranges symlinks inside an isolated container, and the resulting symlink tree is a plan. You review the plan with git or any tool you like, adjust it or ask the agent for more work, and only then let rehearse move the real files in one step.
+
+## How it works
+
+- `inbox/` holds a symlink for every file in the source directory `A`. `outbox/` mirrors the existing library `B`.
+- The agent moves symlinks from `inbox/` into place in `outbox/`. Read-only mounts, file ownership, and the sticky bit keep it from changing anything else.
+- You review the changes with git. Moved symlinks show up as renames.
+- `rehearse commit` renames each real file from `A` to its planned place in `B`. An interrupted commit can be resumed.
+
+The [design document](docs/design.md) explains why it works this way and what it protects against.
 
 ## Documentation
 
-- [docs/overview.md](docs/overview.md) — Problem statement, symlink-staging idea, and invariants
-- [docs/cli.md](docs/cli.md) — Commands and environment variables
-- [docs/sessions.md](docs/sessions.md) — Directory layout, state transitions, and conventions
-- [docs/mirroring.md](docs/mirroring.md) — Agent work directory roles and the sticky-bit permission model
-- [docs/isolation.md](docs/isolation.md) — Docker mounts and toolbox
-- [docs/profiles.md](docs/profiles.md) — Runtime configuration for sessions
-- [docs/review.md](docs/review.md) — Human review workflow
-- [docs/commit.md](docs/commit.md) — Idempotent commit algorithm
+- [docs/design.md](docs/design.md): the problem, the core idea, and the security considerations
+- [docs/guide.md](docs/guide.md): setting up agents, running sessions, reviewing, committing
+- [docs/reference.md](docs/reference.md): commands, profiles, skeletons, file formats, the runner contract
 
 ## Requirements
 
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/)
-- Docker daemon
-- Agent credentials, such as `~/.codex/auth.json`
+- Linux
+- Docker
+- Python 3.11+ and [uv](https://docs.astral.sh/uv/) (to run from source)
+- Credentials for Codex CLI or Claude Code
 
-## Setup
+## Install
 
 ```bash
 uv sync
 ```
 
-This installs dependencies into `.venv/` and makes the `rehearse` command available through `uv run`.
+This installs the dependencies into `.venv/` and makes `uv run rehearse` available.
 
-## Build a Single-File Executable
-
-Use PyInstaller when you want to distribute `rehearse` as one executable:
+To build a single executable instead:
 
 ```bash
 uv run pyinstaller rehearse.spec
 ```
 
-The executable is written to `dist/rehearse`. The bundle includes the default agent instructions, runner/helper scripts, and Docker image build files.
+The executable is written to `dist/rehearse`. It includes the default agent instructions, the runner scripts, and the image build files. When you use it, replace `uv run rehearse` with its path in the examples below.
 
-## Build Agent Images
+## Quick start
 
-Build the agent images locally before first use:
-
-```bash
-uv run rehearse build-image codex  # for Codex CLI
-uv run rehearse build-image claude # for Claude Code
-```
-
-When using the single-file executable, replace `uv run rehearse` with `dist/rehearse` or the installed executable path.
-
-To update the agent CLI in an existing image, rebuild it with `--no-cache`. A normal rebuild reuses Docker's layer cache and keeps the previously installed CLI version.
-
-```bash
-uv run rehearse build-image claude --no-cache
-```
-
-> Note: The Claude Code agent image is intended for local use only. The Dockerfile installs Anthropic's proprietary Claude Code software, which is not covered by this repository's MIT license. Do not redistribute built Claude Code agent images; follow Anthropic's license terms.
-
-## Tests
-
-```bash
-uv run pytest -v
-```
-
-## Manual Run
-
-The following example uses Codex CLI.
-
-Build the image first:
+Build an agent image and prepare credentials as described in the [guide](docs/guide.md#set-up-an-agent). The default profile uses Codex CLI.
 
 ```bash
 uv run rehearse build-image codex
 ```
 
-Prepare Codex CLI credentials. For ChatGPT login cache and provider API key setup, see "Agent home skeleton" in [docs/profiles.md](docs/profiles.md).
-
-Create sample `A` and `B` directories, then run through `create` -> `run` -> `status` -> `commit` -> `delete`:
+Create sample directories and walk through a session:
 
 ```bash
 mkdir -p /tmp/fakeA/sub /tmp/fakeB/existing
@@ -84,43 +59,21 @@ echo nested > /tmp/fakeA/sub/file2.txt
 echo legacy > /tmp/fakeB/existing/old.txt
 
 SID=$(uv run rehearse create /tmp/fakeA /tmp/fakeB)
-uv run rehearse status
-uv run rehearse run "$SID"            # Starts Codex CLI. On success, outbox/.done appears.
+uv run rehearse run "$SID"        # the agent works; on success it creates outbox/.done
 uv run rehearse status "$SID"
-ls ~/.local/share/rehearse/sessions/"$SID"/work/outbox/
-(cd ~/.local/share/rehearse/sessions/"$SID" && git status)
-uv run rehearse commit "$SID"         # Moves files from A to B according to the outbox/ plan.
+(cd ~/.local/share/rehearse/sessions/"$SID" && git status)   # review
+uv run rehearse commit "$SID"     # move the real files from A to B
 uv run rehearse delete "$SID"
 ```
 
-Use `-s` when you want to choose the session ID yourself. Session IDs use the same character set as profile names: letters, digits, `_`, `-`, and `.`.
+## Development
 
 ```bash
-uv run rehearse create -s music-2026-04 /tmp/fakeA /tmp/fakeB
+uv run pytest
 ```
 
-To inspect a session's agent work directory:
+The tests use a fake runner, so they need Docker but no agent image or credentials. See [AGENTS.md](AGENTS.md) for development notes.
 
-```bash
-uv run rehearse exec "$SID" pwd
-uv run rehearse exec "$SID" tree
-uv run rehearse exec "$SID" git status -u
-```
+## License
 
-To enter the Docker container, inspect the agent work directory, or run the agent manually:
-
-```bash
-uv run rehearse debug "$SID" bash
-uv run rehearse debug "$SID" codex --help
-uv run rehearse debug "$SID" /entrypoint.sh
-```
-
-## Cleanup
-
-Session work directories can contain files that the host user cannot delete directly. This is a side effect of the [sticky-bit permission model](docs/mirroring.md). To delete a session work directory, run:
-
-```bash
-uv run rehearse delete <session_id>
-```
-
-Internally, rehearse starts a Docker container as root and runs `rm -rf` for that session.
+MIT. The Claude Code agent image installs Anthropic's proprietary Claude Code, which this license does not cover. Built Claude Code images are for local use only; do not redistribute them unless Anthropic's license terms allow it.
