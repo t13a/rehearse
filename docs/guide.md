@@ -98,7 +98,7 @@ The session directory is a git repository that tracks the work directory. Everyt
 cd ~/.local/share/rehearse/sessions/"$SID"
 git status                   # moved symlinks, new notes, .done
 git diff --find-renames      # where each file came from and where it went
-find work/outbox -name '*FYI.md' -exec cat {} +    # the agent's notes
+find work/outbox -type f ! -name .done -exec cat {} +    # the agent's notes
 ```
 
 Any git tool works: `tig`, `lazygit`, VS Code, and so on.

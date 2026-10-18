@@ -178,7 +178,7 @@ During the commit, the worst outcome is that some files are moved and the rest a
 
 **`outbox/.done` signals success only.** An agent can fail in many ways (timeout, crash, giving up), and none of them is a reliable signal. Success is a single explicit action, so it is the one that gets a marker.
 
-**Notes are real files.** The agent may write notes (`FYI.md`, or `<name>.FYI.md` next to a file) in `outbox/` to explain its choices. The commit skips regular files, so notes stay in the session as part of the record and never reach `B`.
+**Notes are real files.** The agent may write notes in `outbox/` to explain its choices. The commit skips regular files, so notes stay in the session as part of the record and never reach `B`. Their names are up to the instructions. The bundled instructions use `FYI.md`, or `<name>.FYI.md` next to a file.
 
 **`running` is derived from a lock, not stored.** While the agent runs, the runner holds a lock on the session. Any command that sees the lock held treats the session as running. When the process exits for any reason, the operating system releases the lock, so a crash never leaves a session stuck in `running`.
 
