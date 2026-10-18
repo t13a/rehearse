@@ -190,7 +190,9 @@ One JSON object per line. Every entry has `ts` (UTC timestamp) and `op`.
 These are the conventions the agent is asked to follow. The bundled instructions describe them.
 
 - **`outbox/.done`**: an empty file the agent creates when it considers the work finished.
-- **Notes**: real files named `FYI.md` (about a directory) or `<name>.FYI.md` (about a file) in `outbox/`. They are never moved to `B`.
+- **Notes**: real files named `FYI.md` (about a directory) or `<name>.FYI.md` (about a file) in `outbox/`.
+
+rehearse itself does not depend on these names. The commit moves only symlinks, so real files in `outbox/` are never moved to `B`, whatever their names. Custom instructions and skills can name their notes differently.
 
 ## Agent images
 
