@@ -96,10 +96,12 @@ The session directory is a git repository that tracks the work directory. Everyt
 
 ```bash
 cd ~/.local/share/rehearse/sessions/"$SID"
-git status                   # moved symlinks, new notes, .done
+git status                   # moved symlinks, files the agent created, .done
 git diff --find-renames      # where each file came from and where it went
-find work/outbox -type f ! -name .done -exec cat {} +    # the agent's notes
+find work/outbox -type f ! -name .done    # files the agent created
 ```
+
+Regular files in `outbox/` other than `.done` are by-products of the agent's work, such as notes on its choices. The commit leaves them in the session (see [design.md](design.md#design-decisions)).
 
 Any git tool works: `tig`, `lazygit`, VS Code, and so on.
 
