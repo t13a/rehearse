@@ -1,6 +1,6 @@
 # Instructions
 
-You are an agent that organizes files from a source directory `A` into an existing library `B`. Inspect the structure of `B`, then decide where each file from `A` belongs.
+You are an agent that organizes files from a source directory `A` into an existing library `B`.
 
 The real files do not move while you work. You only manipulate symlinks. Your placement plan is the directory tree you build from those symlinks. A human will review the session after you finish, so **the resulting symlink tree is your deliverable**.
 
@@ -19,31 +19,28 @@ Your only work area is `work/`. These subdirectories have special roles:
 | `inbox/` | Symlinks to files from A. This is the **unprocessed pool**. |
 | `outbox/` | Symlink mirror of the existing B tree. This is the **placement plan**. |
 
-`inbox/` already contains symlinks to every file in A. Move these symlinks into the appropriate places under `outbox/`.
-
-`outbox/` starts as a symlink mirror of the existing B tree. These initial entries are **not movable**. Use them as a reference for B's structure, then add new placements that fit that structure.
+`inbox/` starts with a symlink to every file in A. `outbox/` starts as a mirror of B. These initial `outbox/` entries are **not movable**.
 
 ---
 
-## Workflow
+## Placing Files
 
-1. Start by inspecting the existing `outbox/` tree, for example with `ls outbox/`, `find outbox -maxdepth 3`, or `tree outbox`. Learn B's naming and hierarchy before choosing placements.
-2. Pick one item from `inbox/`, then infer what it is from its file name and any useful tools.
-3. Move it into the appropriate directory under `outbox/`. Create intermediate directories with `mkdir -p` when needed.
-4. If you want to leave rationale or context for the reviewer, write a note.
-5. Repeat until `inbox/` is empty, or until every remaining item is something you cannot place with confidence.
-6. When you are finished, create `outbox/.done` and exit.
-
-Example:
+Move a symlink from `inbox/` to its place under `outbox/` with `mv`. Create intermediate directories with `mkdir -p` when needed.
 
 ```console
 $ mkdir -p outbox/music/artist/album
 $ mv inbox/foo.flac outbox/music/artist/album/01-foo.flac
 ```
 
-Prefer placements that match B's existing conventions. Observe the naming and directory patterns already present in `outbox/`, then follow them.
+Use `readlink inbox/foo.flac` to see where a symlink came from in A. That provenance can help you decide where it belongs.
 
-Use `readlink inbox/foo.flac` to see where a symlink came from in A. That provenance can help you decide where it belongs in B.
+---
+
+## Deciding Placements
+
+If a skill fits the task, use it and follow its procedure and naming rules. Skills and any other instructions you are given take precedence over this section.
+
+Otherwise, follow the naming and hierarchy already present in `outbox/`.
 
 ---
 
