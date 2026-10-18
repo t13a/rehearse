@@ -90,15 +90,15 @@ def test_commit_skips_initial_b_symlinks(
     assert (b / "existing" / "old.txt").read_text() == "legacy\n"
 
 
-def test_commit_skips_fyi_files(
+def test_commit_skips_regular_files(
     tmp_path: Path, fake_ab: tuple[Path, Path]
 ) -> None:
     a, b = fake_ab
     session_dir = _build_session_dir(tmp_path, a, b)
     outbox = session_dir / "work" / "outbox"
 
-    # Add a .FYI.md as a real file
-    (outbox / "note.FYI.md").write_text("Some notes\n")
+    # Add a regular file, such as a note
+    (outbox / "NOTE.md").write_text("Some notes\n")
 
     # Also move an A-origin file
     src_link = session_dir / "work" / "inbox" / "file1.txt"
@@ -108,10 +108,10 @@ def test_commit_skips_fyi_files(
 
     assert stats.skipped_file >= 1
     assert stats.moved == 1
-    # .FYI.md should NOT appear in B
-    assert not (b / "note.FYI.md").exists()
-    # .FYI.md stays in outbox/
-    assert (outbox / "note.FYI.md").exists()
+    # The regular file should NOT appear in B
+    assert not (b / "NOTE.md").exists()
+    # It stays in outbox/
+    assert (outbox / "NOTE.md").exists()
 
 
 def test_commit_aborts_on_conflict(

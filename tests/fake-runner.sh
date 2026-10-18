@@ -21,4 +21,4 @@ exec flock -F -E 75 -n "${REHEARSE_SESSION_RUN_LOCK}" docker run --rm \
   -v "${REHEARSE_AGENT_WORK_DIR}:${REHEARSE_AGENT_WORK_DIR}:rw" \
   -w "${REHEARSE_AGENT_WORK_DIR}" \
   "${REHEARSE_AGENT_IMAGE}" \
-  sh -c 'ls inbox/ && ls outbox/ && if [ "${REHEARSE_AGENT_MESSAGE+x}" = x ]; then printf "%s\n" "$REHEARSE_AGENT_MESSAGE" > outbox/FYI.md; fi && touch outbox/.done'
+  sh -c 'ls inbox/ && ls outbox/ && if [ "${REHEARSE_AGENT_MESSAGE+x}" = x ]; then printf "%s\n" "$REHEARSE_AGENT_MESSAGE" > outbox/message.txt; fi && touch outbox/.done'
