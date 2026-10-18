@@ -161,7 +161,7 @@ def test_run_with_message(
     session_dir = config.SESSIONS_DIR / session_id
 
     assert cli.main(["run", session_id, "-m", "テスト指示"]) == 0
-    assert (session_dir / "work" / "outbox" / "FYI.md").read_text() == "テスト指示\n"
+    assert (session_dir / "work" / "outbox" / "message.txt").read_text() == "テスト指示\n"
 
 
 def test_debug_requires_command(capsys: pytest.CaptureFixture[str]) -> None:
