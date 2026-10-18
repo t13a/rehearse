@@ -69,7 +69,7 @@ The commit walks `outbox/` and handles each entry:
 
 | Entry | Action |
 |---|---|
-| Regular file (for example a note) | Skip. It stays in the session. |
+| Regular file | Skip. It stays in the session. |
 | Symlink to a directory | Skip. Only files are moved. |
 | Symlink into `refs/b/` | Skip. The file is already in `B`. |
 | Symlink into `refs/a/` | Move the real file from `A` to the same relative path in `B`. |
@@ -178,7 +178,7 @@ During the commit, the worst outcome is that some files are moved and the rest a
 
 **`outbox/.done` signals success only.** An agent can fail in many ways (timeout, crash, giving up), and none of them is a reliable signal. Success is a single explicit action, so it is the one that gets a marker.
 
-**Notes are real files.** The agent may write notes in `outbox/` to explain its choices. The commit skips regular files, so notes stay in the session as part of the record and never reach `B`. Their names are up to the instructions. The bundled instructions use `FYI.md`, or `<name>.FYI.md` next to a file.
+**The commit skips regular files.** Only symlinks in `outbox/` are part of the plan. Any regular file the agent creates there never reaches `B` and stays in the session as part of the record. So instructions and skills can have the agent write files for any purpose, such as notes on its choices or intermediate results, with no naming rules from rehearse.
 
 **`running` is derived from a lock, not stored.** While the agent runs, the runner holds a lock on the session. Any command that sees the lock held treats the session as running. When the process exits for any reason, the operating system releases the lock, so a crash never leaves a session stuck in `running`.
 
