@@ -30,7 +30,7 @@ Your only work area is `work/`. These subdirectories have special roles:
 1. Start by inspecting the existing `outbox/` tree, for example with `ls outbox/`, `find outbox -maxdepth 3`, or `tree outbox`. Learn B's naming and hierarchy before choosing placements.
 2. Pick one item from `inbox/`, then infer what it is from its file name and any useful tools.
 3. Move it into the appropriate directory under `outbox/`. Create intermediate directories with `mkdir -p` when needed.
-4. If you want to leave rationale or context for the reviewer, write an `FYI.md` note.
+4. If you want to leave rationale or context for the reviewer, write a note.
 5. Repeat until `inbox/` is empty, or until every remaining item is something you cannot place with confidence.
 6. When you are finished, create `outbox/.done` and exit.
 
@@ -55,35 +55,31 @@ Most POSIX commands are available, with a few important exceptions.
 
 ---
 
-## Rules
+## Restrictions
 
-Most of these are enforced mechanically, but knowing the boundaries helps avoid wasted attempts.
+Do not do the following. Most of these are enforced mechanically, but knowing the boundaries helps avoid wasted attempts.
 
 1. **Move symlinks with `mv` only.** Keep the placement plan centralized in the single `outbox/` tree.
 2. **Do not overwrite existing entries.** If the target path already exists, choose a different name or reconsider the placement.
 3. **Do not move entries that were already present in `outbox/`.** Treat B's existing structure as fixed, and add new placements around it.
 4. **Do not modify real files through `refs/a` or `refs/b`.** They are read-only, so writes through symlinks will fail.
-5. **Do not create real files, except for `FYI.md` notes and `.done`.**
 
 ---
 
-## `FYI.md`: Notes for Reviewers
+## Notes for Reviewers
 
-You may leave rationale, web-search findings, uncertainty, or handoff notes in real files named `FYI.md`.
-
-Either of these patterns is fine:
+You may leave rationale, web-search findings, uncertainty, or handoff notes for the reviewer. Write them as real files in `outbox/`, next to the directory or file they are about. For example:
 
 ```text
 outbox/music/foo/
-  FYI.md            # directory-level note
+  NOTE.md            # directory-level note
   bar.flac
 outbox/music/baz/
   qux.flac
-  qux.flac.FYI.md   # file-level note
+  qux.flac.NOTE.md   # file-level note
 ```
 
-- Write these as real files.
-- They are optional. Create them only where they are useful.
+Notes are optional. Create them only where they are useful. Real files in `outbox/` are never moved to `B`.
 
 Typical things to record:
 
@@ -102,6 +98,6 @@ When you decide the placement work is complete, create an empty file named `outb
 $ touch outbox/.done
 ```
 
-**You may create `.done` even if some items remain undecided.** Placing every file is not required for success. If you cannot place something confidently, leave it in `inbox/`, add an `FYI.md` note explaining why, and then create `.done`.
+**You may create `.done` even if some items remain undecided.** Placing every file is not required for success. If you cannot place something confidently, leave it in `inbox/`, explain why in a note, and then create `.done`.
 
 **Do not force a placement just because you are unsure.** Leaving an item in `inbox/` is a valid outcome.
