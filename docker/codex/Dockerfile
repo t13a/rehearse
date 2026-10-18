@@ -9,6 +9,7 @@ RUN apt-get update \
       ca-certificates \
       curl \
       findutils \
+      python-is-python3 \
       python3 \
       tree \
  && rm -rf /var/lib/apt/lists/* \
