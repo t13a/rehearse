@@ -171,7 +171,7 @@ def test_codex_entrypoint_fails_when_agent_init_fails(
     assert result.returncode == 42
 
 
-def test_codex_entrypoint_resumes_existing_session(
+def test_codex_entrypoint_starts_new_session_when_one_exists(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"
@@ -215,8 +215,6 @@ def test_codex_entrypoint_resumes_existing_session(
         "--yolo",
         "--oss",
         "exec",
-        "resume",
-        "--last",
         "--skip-git-repo-check",
-        "Resume working.",
+        "Start working.",
     ]

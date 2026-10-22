@@ -84,7 +84,7 @@ rehearse run "$SID"
 
 `run` blocks until the agent exits. Use `rehearse status "$SID"` to see the result: `done` if the agent finished on its own, `failed` otherwise. `exit_reason` tells you why.
 
-To give more instructions, run again with a message. The agent continues its previous conversation:
+To give more instructions, run again with a message. Each run starts a new conversation, and the agent picks up the state of the work from the work directory. It does not see the earlier conversation, so the message must stand on its own:
 
 ```bash
 rehearse run "$SID" -m "Put live recordings under live/ instead of albums/."

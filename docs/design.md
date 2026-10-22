@@ -127,7 +127,7 @@ stateDiagram-v2
 ```
 
 - **Create**: rehearse checks the inputs, builds the work directory and agent home, and takes a review snapshot.
-- **Run**: rehearse starts the agent in a container and waits for it to exit. A run can be repeated with an extra message, and the agent resumes its previous conversation.
+- **Run**: rehearse starts the agent in a container and waits for it to exit. A run can be repeated with an extra message. Each run starts a new conversation; the state of the work lives in the work directory, not in the conversation.
 - **Commit**: rehearse moves the real files according to the plan.
 - **Delete**: rehearse removes the session directory. Real files are not affected.
 
@@ -182,7 +182,7 @@ During the commit, the worst outcome is that some files are moved and the rest a
 
 **`running` is derived from a lock, not stored.** While the agent runs, the runner holds a lock on the session. Any command that sees the lock held treats the session as running. When the process exits for any reason, the operating system releases the lock, so a crash never leaves a session stuck in `running`.
 
-**The harness does not know the agent or the container runtime.** rehearse starts a *runner* script with a fixed set of environment variables and only observes its exit code. The runner builds the container command. The image's entrypoint starts the agent CLI and decides whether to begin a new conversation or resume one. Supporting another agent CLI or container runtime means writing a new runner or image, not changing rehearse. This also allows tests to use a fake runner without real agents or credentials.
+**The harness does not know the agent or the container runtime.** rehearse starts a *runner* script with a fixed set of environment variables and only observes its exit code. The runner builds the container command. The image's entrypoint starts the agent CLI. Supporting another agent CLI or container runtime means writing a new runner or image, not changing rehearse. This also allows tests to use a fake runner without real agents or credentials.
 
 **Agent-specific setup lives in the agent home.** Each session's agent home is a copy of a template directory (a *skeleton*). Credentials, CLI settings, installed plugins, and an optional startup script live there, in each agent's native format. rehearse does not pass host environment variables into the container. The standing instructions are installed as `AGENTS.md` in the work directory, and each agent finds them through its own discovery.
 

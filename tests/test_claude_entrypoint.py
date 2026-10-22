@@ -55,7 +55,7 @@ def test_claude_entrypoint_runs_with_custom_message(
     ]
 
 
-def test_claude_entrypoint_continues_with_resume_message(
+def test_claude_entrypoint_starts_new_session_when_one_exists(
     tmp_path: Path,
 ) -> None:
     bin_dir = tmp_path / "bin"
@@ -98,8 +98,7 @@ def test_claude_entrypoint_continues_with_resume_message(
         "--print",
         "--permission-mode",
         "bypassPermissions",
-        "--continue",
-        "Resume working.",
+        "Start working.",
     ]
 
 

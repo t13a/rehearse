@@ -18,12 +18,9 @@ args=(
   --permission-mode bypassPermissions
 )
 
-if ls "$HOME/.claude/projects/"*/*.jsonl >/dev/null 2>&1; then
-  args+=(--continue)
-  prompt="${REHEARSE_AGENT_MESSAGE:-Resume working.}"
-else
-  prompt="${REHEARSE_AGENT_MESSAGE:-Start working.}"
-fi
+# Every run starts a new session. The state of the work lives in the work
+# directory, and resuming would resend the whole earlier conversation.
+prompt="${REHEARSE_AGENT_MESSAGE:-Start working.}"
 
 if [ -n "${REHEARSE_AGENT_EXTRA_ARGS:-}" ]; then
   # Word-split intentionally: caller passes space-separated flags.
