@@ -19,7 +19,9 @@ Session IDs and profile names may contain letters, digits, `_`, `-`, and `.`, bu
 
 Starts the agent and waits for it to exit.
 
-- `-m MESSAGE`: an extra message for this run only. Without it, the agent receives `Start working.` on the first run and `Resume working.` afterwards.
+- `-m MESSAGE`: the message for this run. Without it, the agent receives `Start working.`.
+
+Each run starts a new agent conversation. The agent does not see earlier runs' conversations; it picks up the state of the work from the work directory. Write a `-m` message that stands on its own.
 
 Exit status: `0` if the session ended as `done`, `1` if it ended as `failed`, `2` if the session cannot be run (for example, it is already running).
 
@@ -201,7 +203,7 @@ The entrypoint:
 
 1. Sources `~/.rehearse/agent/init.sh` if it exists.
 2. Changes to the work directory.
-3. Resumes the previous conversation if the agent home contains one, otherwise starts a new one.
+3. Starts a new conversation, even if the agent home contains earlier ones.
 4. Runs the agent CLI under `timeout`. After `agent_timeout` seconds it sends `SIGTERM`, and `SIGKILL` 10 seconds later.
 
 > Note: The Claude Code image installs Anthropic's proprietary Claude Code. Built images are for local use only. Do not redistribute them unless Anthropic's license terms allow it.

@@ -25,13 +25,10 @@ fi
 
 TIMEOUT="${REHEARSE_AGENT_TIMEOUT:-3600}"
 
-if find "${CODEX_HOME:-$HOME/.codex}/sessions" -type f -name "*.jsonl" -print -quit 2>/dev/null | grep -q .; then
-  command=(codex "${global_args[@]}" exec resume --last --skip-git-repo-check)
-  prompt="${REHEARSE_AGENT_MESSAGE:-Resume working.}"
-else
-  command=(codex "${global_args[@]}" exec --skip-git-repo-check)
-  prompt="${REHEARSE_AGENT_MESSAGE:-Start working.}"
-fi
+# Every run starts a new session. The state of the work lives in the work
+# directory, and resuming would resend the whole earlier conversation.
+command=(codex "${global_args[@]}" exec --skip-git-repo-check)
+prompt="${REHEARSE_AGENT_MESSAGE:-Start working.}"
 
 # `timeout` returns 124 on SIGTERM and 137 on SIGKILL; the harness keys off
 # both to recognize a timeout.
