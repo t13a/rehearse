@@ -19,7 +19,7 @@ Session IDs and profile names may contain letters, digits, `_`, `-`, and `.`, bu
 
 Starts the agent and waits for it to exit.
 
-- `-m MESSAGE`: the message for this run. Without it, the agent receives `Start working.`.
+- `-m MESSAGE`: the message for this run. Without it, the agent receives the profile's `agent_message`, or `Start working.` if the profile has none. `-m` replaces `agent_message`; the two are not combined.
 
 Each run starts a new agent conversation. The agent does not see earlier runs' conversations; it picks up the state of the work from the work directory. Write a `-m` message that stands on its own.
 
@@ -96,6 +96,7 @@ The profile is copied into the session when it is created, so later edits to the
 | `agent_instructions` | bundled `instructions/default.md` | File installed as `AGENTS.md` in the work directory |
 | `agent_timeout` | `3600` | Seconds before the agent CLI is stopped |
 | `agent_extra_args` | none | Extra arguments for the agent CLI, separated by spaces |
+| `agent_message` | none (the entrypoint sends `Start working.`) | Message the agent receives when `rehearse run` has no `-m`. Use it to invoke a skill explicitly (`$skill-name` for Codex, `/skill-name` at the start for Claude Code) or to talk to the agent in another language. |
 | `agent_uid`, `agent_gid` | host user's UID and GID | User that runs the agent |
 | `guard_uid`, `guard_gid` | `65534`, `65534` | User that owns the protected structure. Must differ from the agent's UID and GID. |
 | `helper_image` | `busybox:latest` | Image for root operations (changing ownership, deleting sessions) |
@@ -223,7 +224,7 @@ rehearse starts the runner (`agent_runner`) with these environment variables and
 | `REHEARSE_AGENT_IMAGE` | Image to run |
 | `REHEARSE_AGENT_UID`, `REHEARSE_AGENT_GID` | User to run as |
 | `REHEARSE_AGENT_TIMEOUT` | Timeout in seconds, for the entrypoint |
-| `REHEARSE_AGENT_MESSAGE` | Message for this run (only if given) |
+| `REHEARSE_AGENT_MESSAGE` | Message for this run: `-m`, or the profile's `agent_message` (only if either is given) |
 | `REHEARSE_AGENT_EXTRA_ARGS` | Extra agent CLI arguments (only if set) |
 | `REHEARSE_DEBUG_ENTRYPOINT` | In `debug` mode, the command to run instead of the entrypoint. Its arguments are passed as the runner's arguments. |
 
