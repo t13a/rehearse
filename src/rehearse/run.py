@@ -21,7 +21,12 @@ def run_agent(
     run_lock_path: Path,
     message: str | None = None,
 ) -> int:
-    """Invoke the external agent runner script in normal agent mode."""
+    """Invoke the external agent runner script in normal agent mode.
+
+    The message replaces the profile's agent_message; they are not combined.
+    """
+    if message is None:
+        message = profile.agent_message
     env = _runner_env(
         session_dir, a, b, profile, run_lock_path=run_lock_path, message=message
     )

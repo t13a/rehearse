@@ -90,6 +90,8 @@ To give more instructions, run again with a message. Each run starts a new conve
 rehearse run "$SID" -m "Put live recordings under live/ instead of albums/."
 ```
 
+The message replaces the profile's `agent_message`. If the profile invokes a skill there (for example `$organizing-media`), invoke it again in the message when the follow-up needs the skill.
+
 ## Review the plan
 
 The session directory is a git repository that tracks the work directory. Everything the agent changed shows up as a change:

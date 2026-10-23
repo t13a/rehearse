@@ -147,6 +147,88 @@ def test_run_agent_omits_message_when_none(
     config.reload()
 
 
+def test_run_agent_uses_profile_message_without_message(tmp_path: Path) -> None:
+    dump = tmp_path / "env.dump"
+    runner = _make_dump_runner(tmp_path, dump)
+
+    profile = effective_profile(
+        {"agent_runner": str(runner), "agent_message": "$organizing-media"}
+    )
+
+    session_dir = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    session_dir.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = run.run_agent(
+        session_dir, a, b, profile, run_lock_path=session.run_lock_path(session_dir)
+    )
+    assert rc == 0
+
+    env = _parse_env(dump)
+    assert env["REHEARSE_AGENT_MESSAGE"] == "$organizing-media"
+
+
+def test_run_agent_message_replaces_profile_message(tmp_path: Path) -> None:
+    dump = tmp_path / "env.dump"
+    runner = _make_dump_runner(tmp_path, dump)
+
+    profile = effective_profile(
+        {"agent_runner": str(runner), "agent_message": "$organizing-media"}
+    )
+
+    session_dir = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    session_dir.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = run.run_agent(
+        session_dir,
+        a,
+        b,
+        profile,
+        run_lock_path=session.run_lock_path(session_dir),
+        message="fix the notes",
+    )
+    assert rc == 0
+
+    env = _parse_env(dump)
+    assert env["REHEARSE_AGENT_MESSAGE"] == "fix the notes"
+
+
+def test_run_debug_ignores_profile_message(tmp_path: Path) -> None:
+    dump = tmp_path / "env.dump"
+    runner = _make_dump_runner(tmp_path, dump)
+
+    profile = effective_profile(
+        {"agent_runner": str(runner), "agent_message": "$organizing-media"}
+    )
+
+    session_dir = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    session_dir.mkdir()
+    a.mkdir()
+    b.mkdir()
+
+    rc = run.run_debug(
+        session_dir,
+        a,
+        b,
+        profile,
+        run_lock_path=session.run_lock_path(session_dir),
+        argv=["true"],
+    )
+    assert rc == 0
+
+    env = _parse_env(dump)
+    assert "REHEARSE_AGENT_MESSAGE" not in env
+
+
 def test_run_agent_passes_extra_args_when_set(tmp_path: Path) -> None:
     dump = tmp_path / "env.dump"
     runner = _make_dump_runner(tmp_path, dump)

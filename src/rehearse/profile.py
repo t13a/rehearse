@@ -37,6 +37,7 @@ class RawProfile(BaseModel):
     agent_instructions: Path | None = None
     agent_timeout: int | None = None
     agent_extra_args: str | None = None
+    agent_message: str | None = None
     skeleton: str | None = None
 
     @field_validator("agent")
@@ -59,6 +60,7 @@ class EffectiveProfile(BaseModel):
     agent_instructions: Path
     agent_timeout: int
     agent_extra_args: str | None
+    agent_message: str | None
     skeleton: str
 
 
@@ -169,5 +171,6 @@ def effective_profile(raw: dict[str, Any]) -> EffectiveProfile:
             else profile.agent_timeout
         ),
         agent_extra_args=profile.agent_extra_args,
+        agent_message=profile.agent_message,
         skeleton=skeleton,
     )
