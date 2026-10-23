@@ -9,6 +9,7 @@ A harness for letting an AI agent organize large files. The agent rearranges sym
 - [docs/guide.md](docs/guide.md): how to use rehearse
 - [docs/reference.md](docs/reference.md): commands, profiles, file formats, and the runner contract
 - [instructions/default.md](instructions/default.md): the default instructions for the agent running inside rehearse
+- [docs/decisions/](docs/decisions/README.md): records of design decisions and the alternatives they rejected
 
 Write all documentation, code comments, commit messages, and GitHub issues and pull requests in English.
 
@@ -17,6 +18,7 @@ Write all documentation, code comments, commit messages, and GitHub issues and p
 - Package manager: `uv`. Use `uv sync`, `uv run rehearse ...`, and `uv run pytest`.
 - Tests use `tests/fake-runner.sh` (based on busybox) instead of a real agent, so they need Docker but no agent image or credentials.
 - Build the agent images with `uv run rehearse build-image codex|claude`. Add `--no-cache` to update the agent CLI.
+- When a change settles a design decision that chose between real alternatives, constrains later changes, and whose reason the code and docs do not show, add a record in `docs/decisions/` to the same pull request. Most changes do not need one; see [docs/decisions/README.md](docs/decisions/README.md).
 - `docs/design.md` lists the security properties and the mechanisms behind them. Changes to mounts, ownership, permissions, or the commit logic must keep that table true, or update it.
 
 ## Code map
