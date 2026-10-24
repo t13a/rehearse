@@ -253,6 +253,39 @@ def test_run_agent_passes_extra_args_when_set(tmp_path: Path) -> None:
     assert env["REHEARSE_AGENT_EXTRA_ARGS"] == "--verbose"
 
 
+def test_run_agent_copies_output_to_log(
+    tmp_path: Path, capfd: pytest.CaptureFixture[str]
+) -> None:
+    runner = tmp_path / "noisy-runner.sh"
+    runner.write_text("#!/bin/bash\necho out-line\necho err-line >&2\nexit 3\n")
+    runner.chmod(runner.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+    profile = effective_profile({"agent_runner": str(runner)})
+
+    session_dir = tmp_path / "ws"
+    a = tmp_path / "A"
+    b = tmp_path / "B"
+    session_dir.mkdir()
+    a.mkdir()
+    b.mkdir()
+    log_path = session_dir / "logs" / "run.log"
+
+    rc = run.run_agent(
+        session_dir,
+        a,
+        b,
+        profile,
+        run_lock_path=session.run_lock_path(session_dir),
+        log_path=log_path,
+    )
+    assert rc == 3
+
+    assert log_path.read_text() == "out-line\nerr-line\n"
+    assert stat.S_IMODE(log_path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(log_path.parent.stat().st_mode) == 0o700
+    assert capfd.readouterr().out == "out-line\nerr-line\n"
+
+
 def test_run_agent_propagates_exit_code(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

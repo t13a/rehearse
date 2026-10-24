@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from rehearse.profile import EffectiveProfile
@@ -20,6 +21,7 @@ def run_agent(
     *,
     run_lock_path: Path,
     message: str | None = None,
+    log_path: Path | None = None,
 ) -> int:
     """Invoke the external agent runner script in normal agent mode.
 
@@ -33,7 +35,26 @@ def run_agent(
     env["REHEARSE_RUNNER_MODE"] = "run"
 
     runner = str(profile.agent_runner)
-    return subprocess.run([runner], env=env).returncode
+    if log_path is None:
+        return subprocess.run([runner], env=env).returncode
+    return _run_with_log([runner], env, log_path)
+
+
+def _run_with_log(argv: list[str], env: dict[str, str], log_path: Path) -> int:
+    """Run argv, copying its stdout and stderr to the terminal and to log_path."""
+    log_path.parent.mkdir(mode=0o700, exist_ok=True)
+    fd = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as log, subprocess.Popen(
+        argv, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    ) as proc:
+        assert proc.stdout is not None
+        out = sys.stdout.buffer
+        while chunk := os.read(proc.stdout.fileno(), 65536):
+            out.write(chunk)
+            out.flush()
+            log.write(chunk)
+            log.flush()
+    return proc.returncode
 
 
 def run_debug(

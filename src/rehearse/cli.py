@@ -163,7 +163,7 @@ def _cmd_run_like(
         )
         return 2
 
-    started_at = session.mark_run_started(session_dir)
+    started_at = session.mark_run_started(session_dir, log=debug_argv is None)
 
     if debug_argv is None:
         rc = run.run_agent(
@@ -173,6 +173,7 @@ def _cmd_run_like(
             effective_profile,
             run_lock_path=session.run_lock_path(session_dir),
             message=message,
+            log_path=session.run_log_path(session_dir, started_at),
         )
     else:
         rc = run.run_debug(
