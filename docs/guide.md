@@ -117,9 +117,13 @@ tail -n +1 -F "$LOG" | jq -rR --unbuffered 'fromjson? // empty
         elif .type == "tool_use" then "🔧 " + .name + ": " + ((.input.command // .input) | tostring)
         else empty end
     elif .type == "user" then .message.content[]? | select(.type == "tool_result")
-      | "↳ " + (.content | if type == "array" then map(.text? // "") | join("\n") else tostring end)
+      | (.content | if type == "array" then map(.text? // "") | join("\n") else tostring end | rtrimstr("\n")) as $out
+      | ($out | split("\n") | length) as $n
+      | if $n > 1 then "↳ \($n) lines:\n" + $out else "↳ " + $out end
     else empty end'
 ```
+
+A one-line tool result is shown after `↳`. A longer one starts with `↳ N lines:`, followed by the output from the next line.
 
 `fromjson? // empty` skips the lines that are not JSON, such as warnings.
 
