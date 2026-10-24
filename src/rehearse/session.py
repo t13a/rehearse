@@ -51,6 +51,7 @@ class SessionMeta(BaseModel):
     profile_name: str
     profile: dict[str, Any]
     exit_reason: str | None = None
+    log: Path | None = None
 
     @field_validator("session_id")
     @classmethod
@@ -87,6 +88,12 @@ def write_meta(session_dir: Path, meta: SessionMeta) -> None:
 
 def session_path(session_id: str) -> Path:
     return config.SESSIONS_DIR / session_id
+
+
+def run_log_path(session_dir: Path, started_at: datetime) -> Path:
+    """Log file for a run, named by its start time in UTC."""
+    stamp = started_at.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return session_dir / "logs" / f"{stamp}.log"
 
 
 def run_lock_path(session_dir: Path) -> Path:
@@ -269,13 +276,15 @@ def meta_for_display(session_dir: Path) -> SessionMeta:
     return meta
 
 
-def mark_run_started(session_dir: Path) -> datetime:
+def mark_run_started(session_dir: Path, *, log: bool) -> datetime:
+    """Record the start of a run. With log, also record the run's log path."""
     started_at = now()
     meta = read_meta(session_dir)
     meta.status = SessionStatus.failed
     meta.started_at = started_at
     meta.ended_at = None
     meta.exit_reason = "interrupted"
+    meta.log = run_log_path(session_dir, started_at) if log else None
     write_meta(session_dir, meta)
     return started_at
 

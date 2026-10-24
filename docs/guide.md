@@ -92,6 +92,41 @@ rehearse run "$SID" -m "Put live recordings under live/ instead of albums/."
 
 The message replaces the profile's `agent_message`. If the profile invokes a skill there (for example `$organizing-media`), invoke it again in the message when the follow-up needs the skill.
 
+## Follow the log
+
+Each run's output is also saved to a log file in the session directory. `rehearse status "$SID"` shows its path as `log`. To follow a run from another terminal:
+
+```bash
+LOG=$(rehearse status "$SID" | jq -r .log)
+```
+
+How readable the log is depends on the agent CLI.
+
+**Codex** writes plain text: each command, its full output, and the agent's messages. Follow it as it is:
+
+```bash
+tail -n +1 -F "$LOG"
+```
+
+**Claude Code** with `--print` writes only the final answer. Add `--output-format stream-json --verbose` to the profile's `agent_extra_args` to log every step as JSON lines, then show the messages (💬), tool calls (🔧), and full tool results (↳) with `jq`:
+
+```bash
+tail -n +1 -F "$LOG" | jq -rR --unbuffered 'fromjson? // empty
+  | if .type == "assistant" then .message.content[]
+      | if .type == "text" then "💬 " + .text
+        elif .type == "tool_use" then "🔧 " + .name + ": " + ((.input.command // .input) | tostring)
+        else empty end
+    elif .type == "user" then .message.content[]? | select(.type == "tool_result")
+      | (.content | if type == "array" then map(.text? // "") | join("\n") else tostring end | rtrimstr("\n")) as $out
+      | ($out | split("\n") | length) as $n
+      | if $n > 1 then "↳ \($n) lines:\n" + $out else "↳ " + $out end
+    else empty end'
+```
+
+A one-line tool result is shown after `↳`. A longer one starts with `↳ N lines:`, followed by the output from the next line.
+
+`fromjson? // empty` skips the lines that are not JSON, such as warnings.
+
 ## Review the plan
 
 The session directory is a git repository that tracks the work directory. Everything the agent changed shows up as a change:

@@ -23,6 +23,8 @@ Starts the agent and waits for it to exit.
 
 Each run starts a new agent conversation. The agent does not see earlier runs' conversations; it picks up the state of the work from the work directory. Write a `-m` message that stands on its own.
 
+The runner's output (stdout and stderr) goes to the terminal and to a new log file, `logs/<start time>.log` in the session directory. The start time is in UTC, for example `20261024T040048Z.log`. `meta.json` records the file's path in `log`. rehearse stores the output as it is; its format is up to the agent CLI.
+
 Exit status: `0` if the session ended as `done`, `1` if it ended as `failed`, `2` if the session cannot be run (for example, it is already running).
 
 ### `rehearse debug SESSION CMD [ARGS...]`
@@ -130,6 +132,7 @@ $REHEARSE_ROOT/sessions/<id>/
 ├── meta.json        Session metadata
 ├── commit.log       Commit log (after the first commit)
 ├── run.lock         Held while the agent runs
+├── logs/            One log file per run (mode 700, files 600)
 ├── .git/            Review snapshot
 ├── .gitignore       Limits the snapshot to work/
 ├── home/agent/      Agent home, mounted as /home/agent
@@ -162,6 +165,7 @@ Ownership and modes right after creation:
 | `session_dir` | Absolute path of the session directory |
 | `profile_name`, `profile` | Profile name and the profile as it was when the session was created |
 | `exit_reason` | Result of the last run (see below) |
+| `log` | Absolute path of the last run's log file, or `null` if the last run was `debug` or there was none |
 
 `running` is never stored. Commands report a session as `running` while `run.lock` is held.
 

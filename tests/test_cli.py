@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from pathlib import Path
 
 import pytest
@@ -164,6 +165,34 @@ def test_run_with_message(
     assert (session_dir / "work" / "outbox" / "message.txt").read_text() == "テスト指示\n"
 
 
+def test_run_saves_log_and_records_path(
+    docker_available: bool,
+    rehearse_root: Path,
+    fake_ab: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    a, b = fake_ab
+    session_id = session.create_session(str(a), str(b))
+    session_dir = config.SESSIONS_DIR / session_id
+
+    assert cli.main(["run", session_id]) == 0
+    first = read_meta(session_dir).log
+    assert first is not None
+    assert first.is_absolute()
+    assert first.parent == session_dir / "logs"
+    assert first.name == read_meta(session_dir).started_at.strftime("%Y%m%dT%H%M%SZ.log")
+    assert first.read_text() != ""
+
+    assert cli.main(["status", session_id]) == 0
+    assert str(first) in capsys.readouterr().out
+
+    time.sleep(1.1)
+    assert cli.main(["run", session_id]) == 0
+    second = read_meta(session_dir).log
+    assert second != first
+    assert first.exists() and second.exists()
+
+
 def test_debug_requires_command(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["debug", "session"]) == 2
     assert "usage: rehearse debug" in capsys.readouterr().err
@@ -202,6 +231,8 @@ def test_debug_uses_run_status_flow(
     assert meta.started_at is not None
     assert meta.ended_at is not None
     assert meta.exit_reason == "normal"
+    assert meta.log is None
+    assert not (session_dir / "logs").exists()
 
 
 def test_debug_rejects_locked_running_session(
