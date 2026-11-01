@@ -92,7 +92,7 @@ def session_path(session_id: str) -> Path:
 
 def run_log_path(session_dir: Path, started_at: datetime) -> Path:
     """Log file for a run, named by its start time in UTC."""
-    stamp = started_at.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = started_at.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     return session_dir / "logs" / f"{stamp}.log"
 
 

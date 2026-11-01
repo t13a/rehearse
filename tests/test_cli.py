@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import time
 from pathlib import Path
 
 import pytest
@@ -180,13 +179,12 @@ def test_run_saves_log_and_records_path(
     assert first is not None
     assert first.is_absolute()
     assert first.parent == session_dir / "logs"
-    assert first.name == read_meta(session_dir).started_at.strftime("%Y%m%dT%H%M%SZ.log")
+    assert first.name == read_meta(session_dir).started_at.strftime("%Y%m%dT%H%M%S.%fZ.log")
     assert first.read_text() != ""
 
     assert cli.main(["status", session_id]) == 0
     assert str(first) in capsys.readouterr().out
 
-    time.sleep(1.1)
     assert cli.main(["run", session_id]) == 0
     second = read_meta(session_dir).log
     assert second != first

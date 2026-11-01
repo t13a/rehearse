@@ -23,7 +23,7 @@ Starts the agent and waits for it to exit.
 
 Each run starts a new agent conversation. The agent does not see earlier runs' conversations; it picks up the state of the work from the work directory. Write a `-m` message that stands on its own.
 
-The runner's output (stdout and stderr) goes to the terminal and to a new log file, `logs/<start time>.log` in the session directory. The start time is in UTC, for example `20261024T040048Z.log`. `meta.json` records the file's path in `log`. rehearse stores the output as it is; its format is up to the agent CLI.
+The runner's output (stdout and stderr) goes to the terminal and to a new log file, `logs/<start time>.log` in the session directory. The start time is in UTC, to the microsecond, for example `20261024T040048.123456Z.log`, so every run gets a file of its own. `meta.json` records the file's path in `log`. rehearse stores the output as it is; its format is up to the agent CLI.
 
 Exit status: `0` if the session ended as `done`, `1` if it ended as `failed`, `2` if the session cannot be run (for example, it is already running).
 
