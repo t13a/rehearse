@@ -147,6 +147,8 @@ def test_run_from_done_session(
     meta = read_meta(session_dir)
     assert meta.status == SessionStatus.done
 
+    # The log of a run is named after its start time, to the second.
+    time.sleep(1.1)
     assert cli.main(["run", session_id]) == 0
     meta = read_meta(session_dir)
     assert meta.status == SessionStatus.done
