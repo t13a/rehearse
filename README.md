@@ -1,6 +1,6 @@
 # rehearse
 
-A harness for letting an AI agent organize large files without risking them.
+A harmless AI agent harness to organize a pile of huge files.
 
 The agent never touches your real files. It rearranges symlinks inside an isolated container, and the resulting symlink tree is a plan. You review the plan with git or any tool you like, adjust it or ask the agent for more work, and only then let rehearse move the real files in one step.
 
